@@ -3,17 +3,23 @@
 
 #include "element.hpp"
 
+void applyNodalForce(int ind, double force, Eigen::Vector<double,8>& R);
+void applyDisplacementBC(int ind, double displacement, Eigen::Matrix<double,8,8>& K, Eigen::Vector<double,8>& R);
+
 int main(int /* argc */, char** /* argv */) 
 {
     // define the material (given in the problem statement)
     const double E = 100;
-    const double mu = 0.25; 
+    const double mu = 0.25;
+    const double density = 1; 
 
+    // define the vertices of the quadrilateral 2D element
     const Eigen::Vector2d x1(0.5,0.5);
     const Eigen::Vector2d x2(-0.5,0.5);
     const Eigen::Vector2d x3(-0.5,-0.5);
     const Eigen::Vector2d x4(0.5,-0.5);
-    const double density = 1;
+    
+    // create the element
     QuadElement element(x1, x2, x3, x4, density, E, mu);
 
     Eigen::Matrix<double, 8, 8> K = element.K();
@@ -24,47 +30,47 @@ int main(int /* argc */, char** /* argv */)
     //  u2 = 0
     //  u3 = 0
     //  u4 = 0.01
+    applyDisplacementBC(0, 0.01, K, R); // u1
+    applyDisplacementBC(2, 0, K, R);    // u2
+    applyDisplacementBC(4, 0, K, R);    // u3
+    applyDisplacementBC(6, 0.01, K, R); // u4
 
-    // u1
-    K.row(0) = Eigen::Vector<double,8>({1,0,0,0,0,0,0,0});
+    // std::cout << "Modified K:\n" << K << std::endl;
+    // std::cout << "Modified R:\n" << R << std::endl;
+
+    // solve KU = R using Eigen's LLT solver
+    Eigen::Vector<double, 8> U = K.llt().solve(R);
+
+    // evaluate stress and strain at integration points
+    const std::vector<double>& integration_points = element.integrationPoints();
+    for (const auto& ri : integration_points)
+    {
+        for (const auto& sj : integration_points)
+        {
+            std::cout << "\n === At integration point (r=" << ri << ", s=" << sj << ") ===" << std::endl;
+            Eigen::Matrix<double, 3, 8> B = element.B(ri, sj);
+            Eigen::Vector3d strain_vec = B*U;
+            Eigen::Vector3d stress_vec = element.C()*B*U;
+            std::cout << "  (e_xx, e_yy, e_xy):       " << strain_vec[0] << ", " << strain_vec[1] << ", " << strain_vec[2] << std::endl;
+            std::cout << "  (sig_xx, sig_yy, sig_xy): " << stress_vec[0] << ", " << stress_vec[1] << ", " << stress_vec[2] << std::endl;
+        }
+    }
+}
+
+void applyNodalForce(int ind, double force, Eigen::Vector<double,8>& R)
+{
+    R(ind) += force;
+}
+
+void applyDisplacementBC(int ind, double displacement, Eigen::Matrix<double,8,8>& K, Eigen::Vector<double,8>& R)
+{
+    // modify the stiffness matrix and load vector
+    K.row(ind) = Eigen::Vector<double,8>::Zero();
+    K(ind,ind) = 1;
     for (int i = 0; i < 8; i++)
     {
-        R(i) -= K(i,0)*0.01;
+        R(i) -= K(i,ind)*displacement;
     }
-    R(0) = 0.01;
-    K.col(0) = K.row(0);
-
-    // u2
-    K.row(2) = Eigen::Vector<double,8>({0,0,1,0,0,0,0,0});
-    R(2) = 0;
-    K.col(2) = K.row(2);
-
-    // u3
-    K.row(4) = Eigen::Vector<double,8>({0,0,0,0,1,0,0,0});
-    R(4) = 0;
-    K.col(4) = K.row(4);
-
-    // u4
-    K.row(6) = Eigen::Vector<double,8>({0,0,0,0,0,0,1,0});
-    R(1) -= K(1,6)*0.01;
-    R(3) -= K(3,6)*0.01;
-    R(5) -= K(5,6)*0.01;
-    R(7) -= K(7,6)*0.01;
-    R(6) = 0.01;
-    K.col(6) = K.row(6);
-
-    std::cout << "Modified K:\n" << K << std::endl;
-    std::cout << "Modified R:\n" << R << std::endl;
-
-    Eigen::Vector<double, 8> U = K.llt().solve(R);
-    std::cout << "\nK:\n" << element.K() << std::endl;
-    std::cout << "\nM:\n" << element.M() << std::endl;
-    std::cout << "\nU:\n" << U << std::endl;
-
-    //////
-
-    Eigen::Matrix<double, 3, 8> B = element.B(-0.577, -0.577);
-    // Eigen::Vector<double, 8> u_hat({0.5, 0, 0, 0, 0, 0, 0, 0});
-    std::cout << "\n" << B*U << std::endl;
-    std::cout << "\n" << element.C()*B*U << std::endl;
+    R(ind) = displacement;
+    K.col(ind) = K.row(ind);
 }
