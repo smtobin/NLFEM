@@ -28,8 +28,8 @@ struct DisplacementBC
 struct ForceBC
 {
     int node_index;     // index of the node (in the input mesh)
-    Axis axis;          // which axis the 
-    double force;
+    Axis axis;          // which axis the force BC applies to (X, Y, or Z)
+    double force;       // the value of the prescribed force
 
     // constructor for convenience
     ForceBC(int node_index_, Axis axis_, double force_)
