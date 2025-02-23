@@ -2,8 +2,10 @@
 
 #include "common.hpp"
 #include "element.hpp"
+#include "material.hpp"
 
 #include <vector>
+#include <memory>
 
 /** Represents a prescribed displacement BC */
 struct DisplacementBC
@@ -50,8 +52,7 @@ class Solver
     public:
     /** Constructor takes in input mesh nodes and elements, and displacement and force boundary conditions. */
     explicit Solver(const std::vector<Node> mesh_nodes, const std::vector<ElementNodes> mesh_element_nodes,
-                    const std::vector<DisplacementBC>& displacement_BCs, const std::vector<ForceBC>& force_BCs,
-                    double density, double E, double mu);
+                    const std::vector<DisplacementBC>& displacement_BCs, const std::vector<ForceBC>& force_BCs);
     
     int numKnownDisplacements() const { return _displacement_BCs.size(); }
     int numUnknownDisplacements() const { return numDOF() - numKnownDisplacements(); }
@@ -66,6 +67,12 @@ class Solver
     private:
     /** Helper method to set up the DOF numbering based on the input mesh and BCs */
     void _setupDOF();
+
+    /** Newton-Raphson */
+    void _newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0);
+
+    /** Assembles the global stiffness matrix, updating the class variable _K */
+    void _assembleStiffnessMatrix();
 
 
     private:
@@ -86,6 +93,9 @@ class Solver
 
     /** Stores the imposed force boundary conditions. */
     std::vector<ForceBC> _force_BCs;
+
+    /** The material for the mesh (right now the same for all elements) */
+    std::unique_ptr<Material> _material;
 
     /** Maps "input" DOF (i.e. DOF numbered according to the input mesh nodes)
      * to some new global DOF numbering.

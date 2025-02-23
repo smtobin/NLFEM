@@ -74,42 +74,33 @@ Eigen::Matrix2d QuadElement::J(double r, double s) const
     return J_mat;
 }
 
-Eigen::Matrix<double, 8, 8> QuadElement::M() const
+// Eigen::Matrix<double, 8, 8> QuadElement::M() const
+// {
+//     Eigen::Matrix<double, 8, 8> M_mat = Eigen::Matrix<double, 8, 8>::Zero();
+
+//     for (unsigned i = 0; i < _integration_points.size(); i++)
+//     {
+//         const double ri = _integration_points[i];
+//         const double wi = _integration_weights[i];
+//         for (unsigned j = 0; j < _integration_points.size(); j++)
+//         {
+//             const double sj = _integration_points[j];
+//             const double wj = _integration_weights[j];
+//             const Eigen::Matrix2d J_mat = J(ri, sj);
+//             const Eigen::Matrix<double, 2, 8> H_mat = H(ri, sj);
+//             M_mat += wi * wj * _density * J_mat.determinant() * H_mat.transpose() * H_mat;
+//         }
+//     }
+
+//     return M_mat;
+// }
+
+Eigen::Matrix<double, 8, 8> QuadElement::K(const Eigen::VectorXd& d_e) const
 {
-    Eigen::Matrix<double, 8, 8> M_mat = Eigen::Matrix<double, 8, 8>::Zero();
+    assert(d_e.size() == NSDIMS*numNodes());
 
-    for (unsigned i = 0; i < _integration_points.size(); i++)
-    {
-        const double ri = _integration_points[i];
-        const double wi = _integration_weights[i];
-        for (unsigned j = 0; j < _integration_points.size(); j++)
-        {
-            const double sj = _integration_points[j];
-            const double wj = _integration_weights[j];
-            const Eigen::Matrix2d J_mat = J(ri, sj);
-            const Eigen::Matrix<double, 2, 8> H_mat = H(ri, sj);
-            M_mat += wi * wj * _density * J_mat.determinant() * H_mat.transpose() * H_mat;
-        }
-    }
-
-    return M_mat;
-}
-
-Eigen::Matrix3d QuadElement::C() const
-{
-    // elasticity matrix for plane strain
-    Eigen::Matrix3d C_mat;
-    C_mat << (1-_mu), _mu, 0,
-                _mu, (1-_mu), 0,
-                0, 0, 0.5*(1-2*_mu);
-    C_mat *= _E / ( (1+_mu) * (1-2*_mu)); 
-    return C_mat;
-}
-
-Eigen::Matrix<double, 8, 8> QuadElement::K() const
-{
     Eigen::Matrix<double, 8, 8> K_mat = Eigen::Matrix<double, 8, 8>::Zero();
-    const Eigen::Matrix3d C_mat = C();
+    
     for (unsigned i = 0; i < _integration_points.size(); i++)
     {
         const double ri = _integration_points[i];
@@ -120,7 +111,10 @@ Eigen::Matrix<double, 8, 8> QuadElement::K() const
             const double wj = _integration_weights[j];
             const Eigen::Matrix2d J_mat = J(ri, sj);
             const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj);
-            K_mat += wi * wj * B_mat.transpose() * C_mat * B_mat * J_mat.determinant();
+            const Eigen::Vector3d strain = B_mat * d_e;
+
+            const Eigen::Matrix3d D_mat = _material->D(strain);
+            K_mat += wi * wj * B_mat.transpose() * D_mat * B_mat * J_mat.determinant();
         }
     }
 

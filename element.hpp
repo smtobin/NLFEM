@@ -1,6 +1,8 @@
 #pragma once
 
-#include <Eigen/Dense>
+#include "common.hpp"
+#include "material.hpp"
+
 #include <iostream>
 #include <cassert>
 
@@ -11,9 +13,9 @@ class QuadElement
     QuadElement()
     {}
 
-    QuadElement(const Eigen::Vector2d& x1, const Eigen::Vector2d& x2, const Eigen::Vector2d& x3, const Eigen::Vector2d& x4, double density, double E, double mu)
+    QuadElement(const Eigen::Vector2d& x1, const Eigen::Vector2d& x2, const Eigen::Vector2d& x3, const Eigen::Vector2d& x4, const Material* material)
         : _x1(x1), _x2(x2), _x3(x3), _x4(x4),
-          _density(density), _E(E), _mu(mu),
+          _material(material),
           _integration_points({-1.0/std::sqrt(3), 1.0/std::sqrt(3)}),
           _integration_weights({1.0, 1.0}),
           _global_DOF()
@@ -40,13 +42,12 @@ class QuadElement
     Eigen::Matrix2d J(double r, double s) const;
 
     // evalutes the mass matrix M for the element
-    Eigen::Matrix<double, 8, 8> M() const;
+    // Eigen::Matrix<double, 8, 8> M() const;
 
-    // evaluates the elasticity matrix C for the element
-    Eigen::Matrix3d C() const;
+    // evalutes the stiffness matrix K for the element at certain nodal displacements
+    Eigen::Matrix<double, 8, 8> K(const Eigen::VectorXd& d_e) const;
 
-    // evalutes the stiffness matrix K for the element
-    Eigen::Matrix<double, 8, 8> K() const;
+    const Material* material() const { return _material; }
 
     const std::vector<double>& integrationPoints() const
     {
@@ -64,9 +65,7 @@ class QuadElement
     Eigen::Vector2d _x3;
     Eigen::Vector2d _x4;
 
-    double _density;
-    double _E;
-    double _mu;
+    const Material* _material;
 
     std::vector<double> _integration_points;
     std::vector<double> _integration_weights;

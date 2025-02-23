@@ -35,6 +35,11 @@ void readInputData(const std::string& filename,
                    std::vector<DisplacementBC>& displacement_BCs, std::vector<ForceBC>& force_BCs)
 {
     std::ifstream infile(filename);
+    if (!infile.good())
+    {
+        std::cerr << "ERROR: Problem reading input file. Check the file path. Aborting..." << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
     std::string line;
     while (std::getline(infile, line))
     {
@@ -96,73 +101,10 @@ int main(int argc, char** argv)
 
     readInputData(input_filename, nodes, element_nodes, displacement_BCs, force_BCs);
 
-    Solver solver(nodes, element_nodes, displacement_BCs, force_BCs, density, E, mu);
+    std::cout << "Read in " << nodes.size() << " nodes, " << element_nodes.size() << " elements, " <<
+        displacement_BCs.size() << " displacement BCs, and " << force_BCs.size() << " force BCs from input file." << std::endl;
+
+    Solver solver(nodes, element_nodes, displacement_BCs, force_BCs);
     solver.solve();
     solver.evaluateElementAtIntegrationPoints(0);
 }
-
-void applyNodalForce(int ind, double force, Eigen::Vector<double,8>& R)
-{
-    R(ind) += force;
-}
-
-void applyDisplacementBC(int ind, double displacement, Eigen::Matrix<double,8,8>& K, Eigen::Vector<double,8>& R)
-{
-    // modify the stiffness matrix and load vector
-    K.row(ind) = Eigen::Vector<double,8>::Zero();
-    K(ind,ind) = 1;
-    for (int i = 0; i < 8; i++)
-    {
-        R(i) -= K(i,ind)*displacement;
-    }
-    R(ind) = displacement;
-    K.col(ind) = K.row(ind);
-}
-
-// Eigen::Matrix<double,8,8> stiffnessMatrix()
-// {
-//     Eigen::Matrix<double,8,8> element_K = element.K();
-    
-//     // manually apply displacement BCs
-//     //  - all rows corresponding to unknown displacements first
-//     //  - rows corresponding to known displacements
-//     Eigen::Matrix<double,8,8> K;
-//     K.row(0) = element_K.row(1);
-//     K.row(1) = element_K.row(3);
-//     K.row(2) = element_K.row(5);
-//     K.row(3) = element_K.row(7);
-//     K.row(4) = element_K.row(0);
-//     K.row(5) = element_K.row(2);
-//     K.row(6) = element_K.row(4);
-//     K.row(7) = element_K.row(6);
-
-//     return K;
-// }
-
-// Eigen::Vector<double,8> internalForce(const Eigen::Vector<double,8>& d)
-// {
-//     Eigen::Matrix<double, 8, 8> K = element.K();
-//     return K*d;
-// }
-
-// Eigen::Vector<double,8> newtonRaphson(const Eigen::Vector<double,8>& F_ext, const Eigen::Vector<double,8>& d0)
-// {
-//     Eigen::Vector<double,8> R = F_ext - internalForce(d0);
-//     Eigen::Vector<double,8> d = d0;
-    
-//     int max_iter = 1000;
-//     double tol = 1e-12;
-//     for (int i = 0; i < max_iter; i++)
-//     {
-//         if (R.norm() < R.norm() * tol)
-//             break;
-
-//         Eigen::Matrix<double,8,8> K = stiffnessMatrix();
-//         Eigen::Vector<double,8> delta_d = K.inverse() * R;
-//         d += delta_d;
-
-//         R = F_ext - internalForce(d0);
-//     }
-
-//     return d;
-// }

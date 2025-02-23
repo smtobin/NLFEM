@@ -1,12 +1,21 @@
 #include "solver.hpp"
 
 Solver::Solver( const std::vector<Node> mesh_nodes, const std::vector<ElementNodes> mesh_element_nodes,
-                const std::vector<DisplacementBC>& displacement_BCs, const std::vector<ForceBC>& force_BCs,
-                double density, double E, double mu)
+                const std::vector<DisplacementBC>& displacement_BCs, const std::vector<ForceBC>& force_BCs)
     : _mesh_nodes(mesh_nodes), _mesh_element_nodes(mesh_element_nodes),
-     _displacement_BCs(displacement_BCs), _force_BCs(force_BCs),
-     _density(density), _E(E), _mu(mu)
+     _displacement_BCs(displacement_BCs), _force_BCs(force_BCs)
+     
 {
+    // create material
+
+    // TODO: better way to switch material depending on hw assignment
+    // for Linear FEM code
+    _material = std::make_unique<PlaneStrainMaterial>(100, 0.25);
+
+    // for HW 3
+    // _material = std::make_unique<HW3Material>(40, -50, -30);
+
+
     // verify that displacement BCs and force BCs do not overlap
     for (const auto& disp_bc : displacement_BCs)
     {
@@ -24,7 +33,7 @@ Solver::Solver( const std::vector<Node> mesh_nodes, const std::vector<ElementNod
                                         _mesh_nodes[e[1]],
                                         _mesh_nodes[e[2]],
                                         _mesh_nodes[e[3]],
-                                         density, E, mu));
+                                        _material.get()));
     }
 
     // number the global DOF
@@ -71,8 +80,7 @@ void Solver::_setupDOF()
 
 void Solver::solve()
 {
-    // initialize K, U, and R
-    _K = Eigen::MatrixXd::Zero(numDOF(), numDOF());
+    // initialize U and R
     _U = Eigen::VectorXd::Zero(numDOF());
     _R = Eigen::VectorXd::Zero(numDOF());
 
@@ -92,21 +100,9 @@ void Solver::solve()
     Eigen::VectorXd U_known = _U(Eigen::seq(numUnknownDisplacements(), numDOF()-1));
     Eigen::VectorXd R_known = _R(Eigen::seq(0, numUnknownDisplacements()-1));
 
-    // assemble global stiffness matrix
-    for (const auto& element : _elements)
-    {
-        const std::vector<int>& element_nodal_to_global_DOF = element.globalDOF();
-        const Eigen::Matrix<double, 8, 8> element_K = element.K();
-        for (int i = 0; i < 8; i++)
-        {
-            const int i_global = element_nodal_to_global_DOF[i];
-            for (int j = 0; j < 8; j++)
-            {  
-                const int j_global = element_nodal_to_global_DOF[j];
-                _K(i_global, j_global) += element_K(i, j);
-            }
-        }
-    }
+    _assembleStiffnessMatrix();
+
+    // _newtonRaphson(_R, _U);
 
     // partition K into parts that are known and unknown
     Eigen::MatrixXd K_ff = _K.block(0,0,numUnknownDisplacements(), numUnknownDisplacements());
@@ -124,7 +120,7 @@ void Solver::evaluateElementAtIntegrationPoints(int element_index)
     const QuadElement& element = _elements[element_index];
     const std::vector<double>& integration_points = element.integrationPoints();
     const std::vector<int>& element_global_DOF = element.globalDOF();
-    
+
     // get element displacement vector
     Eigen::VectorXd U_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
     for (int i = 0; i < NSDIMS*element.numNodes(); i++)
@@ -140,9 +136,70 @@ void Solver::evaluateElementAtIntegrationPoints(int element_index)
             std::cout << "\n === At integration point (r=" << ri << ", s=" << sj << ") ===" << std::endl;
             Eigen::Matrix<double, 3, 8> B = element.B(ri, sj);
             Eigen::Vector3d strain_vec = B*U_element;
-            Eigen::Vector3d stress_vec = element.C()*B*U_element;
+            Eigen::Vector3d stress_vec = element.material()->D(strain_vec)*B*U_element;
             std::cout << "  (e_xx, e_yy, e_xy):       " << strain_vec[0] << ", " << strain_vec[1] << ", " << strain_vec[2] << std::endl;
             std::cout << "  (sig_xx, sig_yy, sig_xy): " << stress_vec[0] << ", " << stress_vec[1] << ", " << stress_vec[2] << std::endl;
+        }
+    }
+}
+
+void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0)
+{
+    // Eigen::VectorXd F_int = Eigen::VectorXd::Zero(F_ext.size());
+    // for linear problems, F_int = K*d
+    _assembleStiffnessMatrix();
+    Eigen::VectorXd F_int = _K * d0;
+    Eigen::VectorXd res = F_int - F_ext;
+    std::cout << "res0:\n" << res << std::endl;
+    double res0_norm = res.norm();
+
+    Eigen::VectorXd d = d0;
+
+    int max_iter = 1000;
+    double tol = 1e-6;
+    for (int i = 0; i < max_iter; i++)
+    {
+        if (res.norm() < res0_norm * tol)
+            break;
+
+        _assembleStiffnessMatrix();
+        Eigen::VectorXd delta_d = _K.inverse() * res;
+        std::cout << "delta_d:\n" << delta_d << std::endl;
+        d += delta_d;
+
+        res = F_ext - _K*d;
+        break;
+    }
+
+    _U = d;
+    std::cout << "U:\n" << d << std::endl;
+}
+
+void Solver::_assembleStiffnessMatrix()
+{
+    // initialize K to all zeros
+    _K = Eigen::MatrixXd::Zero(numDOF(), numDOF());
+
+    // assemble global stiffness matrix
+    for (const auto& element : _elements)
+    {
+        const std::vector<int>& element_global_DOF = element.globalDOF();
+        // get element displacement vector
+        Eigen::VectorXd d_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
+        for (int i = 0; i < NSDIMS*element.numNodes(); i++)
+        {
+            d_element[i] = _U[element_global_DOF[i]];
+        }
+        
+        const Eigen::Matrix<double, 8, 8> element_K = element.K(d_element);
+        for (int i = 0; i < 8; i++)
+        {
+            const int i_global = element_global_DOF[i];
+            for (int j = 0; j < 8; j++)
+            {  
+                const int j_global = element_global_DOF[j];
+                _K(i_global, j_global) += element_K(i, j);
+            }
         }
     }
 }
