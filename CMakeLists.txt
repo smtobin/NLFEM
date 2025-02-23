@@ -22,5 +22,5 @@ FetchContent_MakeAvailable(Eigen)
 list(POP_BACK CMAKE_MESSAGE_INDENT)
 message(CHECK_PASS "fetched")
 
-add_executable(LinearFEM main.cpp)
+add_executable(LinearFEM main.cpp solver.cpp)
 target_link_libraries(LinearFEM Eigen3::Eigen)

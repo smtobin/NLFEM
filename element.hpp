@@ -1,20 +1,34 @@
-#ifndef __ELEMENT_HPP
-#define __ELEMENT_HPP
+#pragma once
 
 #include <Eigen/Dense>
 #include <iostream>
+#include <cassert>
 
 // 2D Quadrilateral element with plane strain
 class QuadElement
 {
     public:
+    QuadElement()
+    {}
+
     QuadElement(const Eigen::Vector2d& x1, const Eigen::Vector2d& x2, const Eigen::Vector2d& x3, const Eigen::Vector2d& x4, double density, double E, double mu)
         : _x1(x1), _x2(x2), _x3(x3), _x4(x4),
           _density(density), _E(E), _mu(mu),
           _integration_points({-1.0/std::sqrt(3), 1.0/std::sqrt(3)}),
-          _integration_weights({1.0, 1.0})
+          _integration_weights({1.0, 1.0}),
+          _global_DOF()
     {
     }
+
+    int numNodes() const { return 4; }
+
+    void setGlobalDOF(const std::vector<int>& global_dof)
+    {
+        assert(global_dof.size() == 8);
+        _global_DOF = global_dof;
+    }
+
+    const std::vector<int>& globalDOF() const { return _global_DOF; }
 
     // evaluates the interpolation matrix H at (r,s)
     Eigen::Matrix<double, 2, 8> H(double r, double s) const
@@ -171,6 +185,6 @@ class QuadElement
 
     std::vector<double> _integration_points;
     std::vector<double> _integration_weights;
-};
 
-#endif // __ELEMENT_HPP
+    std::vector<int> _global_DOF;
+};
