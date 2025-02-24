@@ -149,31 +149,30 @@ void Solver::evaluateElementAtIntegrationPoints(int element_index)
 
 void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0)
 {
-    // Eigen::VectorXd F_int = Eigen::VectorXd::Zero(F_ext.size());
-    // for linear problems, F_int = K*d
     _assembleStiffnessMatrix(d0);
     Eigen::VectorXd F_int = _K * d0;
-    Eigen::VectorXd res = F_ext - F_int;
-    double res0_norm = res.norm();
+    Eigen::VectorXd res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - F_int(Eigen::seq(0, numUnknownDisplacements()-1));
+    double res0_norm = res.squaredNorm();
 
     Eigen::VectorXd d = d0;
 
-    int max_iter = 1000;
-    double tol = 1e-6;
-    for (int i = 0; i < max_iter; i++)
+    for (int i = 0; i < NR_MAX_ITER; i++)
     {
-        if (res.norm() < res0_norm * tol)
+        if (res.squaredNorm() < res0_norm * NR_TOL)
+        {
             break;
+        }
 
-        
-        Eigen::VectorXd delta_d = _K.llt().solve(res);
-        d += delta_d;
+        Eigen::MatrixXd K_unknown = _K.block(0,0,numUnknownDisplacements(), numUnknownDisplacements());
+        Eigen::VectorXd delta_d = K_unknown.llt().solve(res);
+        d(Eigen::seq(0,numUnknownDisplacements()-1)) += delta_d;
 
         // recompute stiffness matrix at new d
         _assembleStiffnessMatrix(d);
 
         // F_int = _K(d)*d
-        res = F_ext - _K*d;
+        F_int = _K*d;
+        res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - F_int(Eigen::seq(0, numUnknownDisplacements()-1));
     }
 
     _U = d;
