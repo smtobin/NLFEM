@@ -1,5 +1,7 @@
 #include "solver.hpp"
 
+#include <iomanip>
+
 Solver::Solver( const std::vector<Node> mesh_nodes, const std::vector<ElementNodes> mesh_element_nodes,
                 const std::vector<DisplacementBC>& displacement_BCs, const std::vector<ForceBC>& force_BCs)
     : _mesh_nodes(mesh_nodes), _mesh_element_nodes(mesh_element_nodes),
@@ -107,6 +109,8 @@ void Solver::solve(int num_load_steps)
         _newtonRaphson(_R, _U);
     }
 
+    std::cout << "Final U:\n" << _U << std::endl;
+
     // // partition K into parts that are known and unknown
     // Eigen::MatrixXd K_ff = _K.block(0,0,numUnknownDisplacements(), numUnknownDisplacements());
     // Eigen::MatrixXd K_fu = _K.block(0,numUnknownDisplacements(), numUnknownDisplacements(), numKnownDisplacements());
@@ -137,10 +141,12 @@ void Solver::evaluateElementAtIntegrationPoints(int element_index)
     {
         for (const auto& sj : integration_points)
         {
+            std::cout << std::setprecision(5);
             std::cout << "\n === At integration point (r=" << ri << ", s=" << sj << ") ===" << std::endl;
             Eigen::Matrix<double, 3, 8> B = element.B(ri, sj);
             Eigen::Vector3d strain_vec = B*U_element;
             Eigen::Vector3d stress_vec = element.material()->D(strain_vec)*B*U_element;
+            std::cout << std::setprecision(15);
             std::cout << "  (e_xx, e_yy, e_xy):       " << strain_vec[0] << ", " << strain_vec[1] << ", " << strain_vec[2] << std::endl;
             std::cout << "  (sig_xx, sig_yy, sig_xy): " << stress_vec[0] << ", " << stress_vec[1] << ", " << stress_vec[2] << std::endl;
         }

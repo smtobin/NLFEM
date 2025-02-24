@@ -56,8 +56,8 @@ class HW3Material : public Material
         D_mat(1,1) = 2*_a + 3*_b*ey + 6*_b*ex + 3*_c*ey;
         D_mat(1,2) = 1.5*_c*exy;
 
-        D_mat(2,0) = 3*_c*exy + 3*_c*ey;
-        D_mat(2,1) = 0;
+        D_mat(2,0) = 3*_c*exy;
+        D_mat(2,1) = 3*_c*exy;
         D_mat(2,2) = _a;
 
         return D_mat;
