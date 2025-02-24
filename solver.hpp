@@ -59,7 +59,7 @@ class Solver
     int numDOF() const { return NSDIMS*_mesh_nodes.size(); }
 
     /** Solve the global finite element equations */
-    void solve();
+    void solve(int num_load_steps=1);
 
     /** Evaluate element strains and stresses at integration points */
     void evaluateElementAtIntegrationPoints(int element_index);
@@ -72,7 +72,7 @@ class Solver
     void _newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0);
 
     /** Assembles the global stiffness matrix, updating the class variable _K */
-    void _assembleStiffnessMatrix();
+    void _assembleStiffnessMatrix(const Eigen::VectorXd& d);
 
 
     private:

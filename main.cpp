@@ -105,6 +105,6 @@ int main(int argc, char** argv)
         displacement_BCs.size() << " displacement BCs, and " << force_BCs.size() << " force BCs from input file." << std::endl;
 
     Solver solver(nodes, element_nodes, displacement_BCs, force_BCs);
-    solver.solve();
+    solver.solve(10);
     solver.evaluateElementAtIntegrationPoints(0);
 }

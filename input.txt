@@ -11,7 +11,7 @@ e 0 1 2 3
 
 # force BC - node index, axis (x or y), force
 # example: f 0 x 10
-f 0 x 0.53335
-f 1 x -0.53335
-f 2 x -0.53335
-f 3 x 0.53335
+f 0 x 1.655
+f 1 x -1.655
+f 2 x -1.655
+f 3 x 1.655

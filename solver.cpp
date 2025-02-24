@@ -10,10 +10,10 @@ Solver::Solver( const std::vector<Node> mesh_nodes, const std::vector<ElementNod
 
     // TODO: better way to switch material depending on hw assignment
     // for Linear FEM code
-    _material = std::make_unique<PlaneStrainMaterial>(100, 0.25);
+    // _material = std::make_unique<PlaneStrainMaterial>(100, 0.25);
 
     // for HW 3
-    // _material = std::make_unique<HW3Material>(40, -50, -30);
+    _material = std::make_unique<HW3Material>(40, -50, -30);
 
 
     // verify that displacement BCs and force BCs do not overlap
@@ -78,41 +78,45 @@ void Solver::_setupDOF()
     }
 }
 
-void Solver::solve()
+void Solver::solve(int num_load_steps)
 {
     // initialize U and R
     _U = Eigen::VectorXd::Zero(numDOF());
     _R = Eigen::VectorXd::Zero(numDOF());
 
-    // put in known displacements and forces
-    for (unsigned i = 0; i < _displacement_BCs.size(); i++)
+    for (int k = 0; k < num_load_steps; k++)
     {
-        int global_DOF = _input_to_global_DOF[_displacement_BCs[i].inputDOF()];
-        _U[global_DOF] = _displacement_BCs[i].displacement;
+        // put in known displacements and forces
+        for (unsigned i = 0; i < _displacement_BCs.size(); i++)
+        {
+            int global_DOF = _input_to_global_DOF[_displacement_BCs[i].inputDOF()];
+            _U[global_DOF] = (k+1) * _displacement_BCs[i].displacement / num_load_steps;
+        }
+
+        for (unsigned i = 0; i < _force_BCs.size(); i++)
+        {
+            int global_DOF = _input_to_global_DOF[_force_BCs[i].inputDOF()];
+            _R[global_DOF] = (k+1) * _force_BCs[i].force / num_load_steps;
+        }
+
+        Eigen::VectorXd U_known = _U(Eigen::seq(numUnknownDisplacements(), numDOF()-1));
+        Eigen::VectorXd R_known = _R(Eigen::seq(0, numUnknownDisplacements()-1));
+
+        // _assembleStiffnessMatrix();
+
+        _newtonRaphson(_R, _U);
     }
 
-    for (unsigned i = 0; i < _force_BCs.size(); i++)
-    {
-        int global_DOF = _input_to_global_DOF[_force_BCs[i].inputDOF()];
-        _R[global_DOF] = _force_BCs[i].force;
-    }
+    // // partition K into parts that are known and unknown
+    // Eigen::MatrixXd K_ff = _K.block(0,0,numUnknownDisplacements(), numUnknownDisplacements());
+    // Eigen::MatrixXd K_fu = _K.block(0,numUnknownDisplacements(), numUnknownDisplacements(), numKnownDisplacements());
+    // Eigen::MatrixXd K_uu = _K.block(numUnknownDisplacements(), numUnknownDisplacements(), numKnownDisplacements(), numKnownDisplacements());
 
-    Eigen::VectorXd U_known = _U(Eigen::seq(numUnknownDisplacements(), numDOF()-1));
-    Eigen::VectorXd R_known = _R(Eigen::seq(0, numUnknownDisplacements()-1));
-
-    _assembleStiffnessMatrix();
-
-    // _newtonRaphson(_R, _U);
-
-    // partition K into parts that are known and unknown
-    Eigen::MatrixXd K_ff = _K.block(0,0,numUnknownDisplacements(), numUnknownDisplacements());
-    Eigen::MatrixXd K_fu = _K.block(0,numUnknownDisplacements(), numUnknownDisplacements(), numKnownDisplacements());
-    Eigen::MatrixXd K_uu = _K.block(numUnknownDisplacements(), numUnknownDisplacements(), numKnownDisplacements(), numKnownDisplacements());
-
-    // solve for unknown displacements
-    _U(Eigen::seq(0, numUnknownDisplacements()-1)) = K_ff.llt().solve(R_known - K_fu*U_known);
-    // solve for unknown reaction forces
-    _R(Eigen::seq(numUnknownDisplacements(), numDOF()-1)) = K_fu.transpose() * _U(Eigen::seq(0, numUnknownDisplacements()-1)) + K_uu*U_known;
+    // // solve for unknown displacements
+    // _U(Eigen::seq(0, numUnknownDisplacements()-1)) = K_ff.llt().solve(R_known - K_fu*U_known);
+    // // solve for unknown reaction forces
+    // _R(Eigen::seq(numUnknownDisplacements(), numDOF()-1)) = K_fu.transpose() * _U(Eigen::seq(0, numUnknownDisplacements()-1)) + K_uu*U_known;
+    
 }
 
 void Solver::evaluateElementAtIntegrationPoints(int element_index)
@@ -147,10 +151,9 @@ void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd&
 {
     // Eigen::VectorXd F_int = Eigen::VectorXd::Zero(F_ext.size());
     // for linear problems, F_int = K*d
-    _assembleStiffnessMatrix();
+    _assembleStiffnessMatrix(d0);
     Eigen::VectorXd F_int = _K * d0;
-    Eigen::VectorXd res = F_int - F_ext;
-    std::cout << "res0:\n" << res << std::endl;
+    Eigen::VectorXd res = F_ext - F_int;
     double res0_norm = res.norm();
 
     Eigen::VectorXd d = d0;
@@ -162,20 +165,21 @@ void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd&
         if (res.norm() < res0_norm * tol)
             break;
 
-        _assembleStiffnessMatrix();
-        Eigen::VectorXd delta_d = _K.inverse() * res;
-        std::cout << "delta_d:\n" << delta_d << std::endl;
+        
+        Eigen::VectorXd delta_d = _K.llt().solve(res);
         d += delta_d;
 
+        // recompute stiffness matrix at new d
+        _assembleStiffnessMatrix(d);
+
+        // F_int = _K(d)*d
         res = F_ext - _K*d;
-        break;
     }
 
     _U = d;
-    std::cout << "U:\n" << d << std::endl;
 }
 
-void Solver::_assembleStiffnessMatrix()
+void Solver::_assembleStiffnessMatrix(const Eigen::VectorXd& d)
 {
     // initialize K to all zeros
     _K = Eigen::MatrixXd::Zero(numDOF(), numDOF());
@@ -188,7 +192,7 @@ void Solver::_assembleStiffnessMatrix()
         Eigen::VectorXd d_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
         for (int i = 0; i < NSDIMS*element.numNodes(); i++)
         {
-            d_element[i] = _U[element_global_DOF[i]];
+            d_element[i] = d[element_global_DOF[i]];
         }
         
         const Eigen::Matrix<double, 8, 8> element_K = element.K(d_element);
