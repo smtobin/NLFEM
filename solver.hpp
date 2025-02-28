@@ -52,7 +52,8 @@ class Solver
     public:
     /** Constructor takes in input mesh nodes and elements, and displacement and force boundary conditions. */
     explicit Solver(const std::vector<Node> mesh_nodes, const std::vector<ElementNodes> mesh_element_nodes,
-                    const std::vector<DisplacementBC>& displacement_BCs, const std::vector<ForceBC>& force_BCs);
+                    const std::vector<DisplacementBC>& displacement_BCs, const std::vector<ForceBC>& force_BCs,
+                    const Material* material);
     
     int numKnownDisplacements() const { return _displacement_BCs.size(); }
     int numUnknownDisplacements() const { return numDOF() - numKnownDisplacements(); }
@@ -95,7 +96,7 @@ class Solver
     std::vector<ForceBC> _force_BCs;
 
     /** The material for the mesh (right now the same for all elements) */
-    std::unique_ptr<Material> _material;
+    const Material* _material;
 
     /** Maps "input" DOF (i.e. DOF numbered according to the input mesh nodes)
      * to some new global DOF numbering.

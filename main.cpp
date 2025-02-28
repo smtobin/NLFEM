@@ -32,7 +32,8 @@ const double density = 1;
 
 void readInputData(const std::string& filename,
                    std::vector<Node>& nodes, std::vector<ElementNodes>& element_nodes,
-                   std::vector<DisplacementBC>& displacement_BCs, std::vector<ForceBC>& force_BCs)
+                   std::vector<DisplacementBC>& displacement_BCs, std::vector<ForceBC>& force_BCs,
+                   std::unique_ptr<Material>& material)
 {
     std::ifstream infile(filename);
     if (!infile.good())
@@ -84,6 +85,24 @@ void readInputData(const std::string& filename,
 
             force_BCs.emplace_back(i, axis, d);
         }
+        else if (line[0] == 'm')
+        {
+            std::string material_str;
+            if (!(iss >> c >> material_str)) { assert(0); }
+
+            if (material_str == "PlaneStrain")
+            {
+                material = std::make_unique<PlaneStrainMaterial>(100, 0.25); // parameters from linear FEM assignment
+            }
+            else if (material_str == "HW3")
+            {
+                material = std::make_unique<HW3Material>(40, -50, -30); // parameters from HW3 assignment
+            }
+            else
+            {
+                assert(0);
+            }
+        }
     }
 }
 
@@ -98,13 +117,14 @@ int main(int argc, char** argv)
     std::vector<ElementNodes> element_nodes;
     std::vector<DisplacementBC> displacement_BCs;
     std::vector<ForceBC> force_BCs;
+    std::unique_ptr<Material> material;
 
-    readInputData(input_filename, nodes, element_nodes, displacement_BCs, force_BCs);
+    readInputData(input_filename, nodes, element_nodes, displacement_BCs, force_BCs, material);
 
     std::cout << "Read in " << nodes.size() << " nodes, " << element_nodes.size() << " elements, " <<
         displacement_BCs.size() << " displacement BCs, and " << force_BCs.size() << " force BCs from input file." << std::endl;
 
-    Solver solver(nodes, element_nodes, displacement_BCs, force_BCs);
+    Solver solver(nodes, element_nodes, displacement_BCs, force_BCs, material.get());
     solver.solve(10);
     solver.evaluateElementAtIntegrationPoints(0);
 }
