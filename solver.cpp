@@ -138,7 +138,6 @@ void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd&
     // compute initial residual
     _assembleInternalForceVector(d0);
     Eigen::VectorXd res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - _F_int_global(Eigen::seq(0, numUnknownDisplacements()-1));
-    std::cout << "Initial Residual:\n" << res << std::endl;
     double res0_norm = res.squaredNorm();
 
     Eigen::VectorXd d = d0;
@@ -221,6 +220,4 @@ void Solver::_assembleInternalForceVector(const Eigen::VectorXd& d)
             _F_int_global(i_global) += element_F_int(i);
         }
     }
-
-    // std::cout << "New N:\n" << _F_int_global << std::endl;
 }
