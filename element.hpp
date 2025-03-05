@@ -44,8 +44,11 @@ class QuadElement
     // evalutes the mass matrix M for the element
     // Eigen::Matrix<double, 8, 8> M() const;
 
-    // evalutes the stiffness matrix K for the element at certain nodal displacements
+    // evalutes the stiffness matrix K for the element for given nodal displacements
     Eigen::Matrix<double, 8, 8> K(const Eigen::VectorXd& d_e) const;
+
+    // evaulates the internal force vector for the element for given nodal displacements
+    Eigen::Vector<double, 8> internalForce(const Eigen::VectorXd& d_e) const;
 
     const Material* material() const { return _material; }
 

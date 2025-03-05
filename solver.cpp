@@ -125,7 +125,7 @@ void Solver::evaluateElementAtIntegrationPoints(int element_index)
             std::cout << "\n === At integration point (r=" << ri << ", s=" << sj << ") ===" << std::endl;
             Eigen::Matrix<double, 3, 8> B = element.B(ri, sj);
             Eigen::Vector3d strain_vec = B*U_element;
-            Eigen::Vector3d stress_vec = element.material()->D(strain_vec)*B*U_element;
+            const auto [stress_vec, D_mat] = element.material()->materialSubroutine(strain_vec);
             std::cout << std::setprecision(15);
             std::cout << "  (e_xx, e_yy, e_xy):       " << strain_vec[0] << ", " << strain_vec[1] << ", " << strain_vec[2] << std::endl;
             std::cout << "  (sig_xx, sig_yy, sig_xy): " << stress_vec[0] << ", " << stress_vec[1] << ", " << stress_vec[2] << std::endl;
@@ -136,14 +136,14 @@ void Solver::evaluateElementAtIntegrationPoints(int element_index)
 void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0)
 {
     // compute initial residual
-    _assembleStiffnessMatrix(d0);
-    Eigen::VectorXd F_int = _K * d0;
-    Eigen::VectorXd res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - F_int(Eigen::seq(0, numUnknownDisplacements()-1));
+    _assembleInternalForceVector(d0);
+    Eigen::VectorXd res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - _N(Eigen::seq(0, numUnknownDisplacements()-1));
+    std::cout << "Initial Residual:\n" << res << std::endl;
     double res0_norm = res.squaredNorm();
 
     Eigen::VectorXd d = d0;
 
-    for (int i = 0; i < NR_MAX_ITER; i++)
+    for (int i = 0; i < 3; i++)
     {
         // check if we've converged
         if (res.squaredNorm() < res0_norm * NR_TOL)
@@ -151,18 +151,18 @@ void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd&
             break;
         }
 
+        _assembleStiffnessMatrix(d);
+
         // delta d = K^-1*R
         // we only do this for the unknown displacements, which are the first numUnknownDisplacements() rows in K and the residual
         Eigen::MatrixXd K_unknown = _K.block(0,0,numUnknownDisplacements(), numUnknownDisplacements());
         Eigen::VectorXd delta_d = K_unknown.llt().solve(res);
         d(Eigen::seq(0,numUnknownDisplacements()-1)) += delta_d;
 
-        // recompute stiffness matrix at new d
-        _assembleStiffnessMatrix(d);
+        // recompute internal force at new d
+        _assembleInternalForceVector(d);
 
-        // F_int = _K(d)*d
-        F_int = _K*d;
-        res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - F_int(Eigen::seq(0, numUnknownDisplacements()-1));
+        res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - _N(Eigen::seq(0, numUnknownDisplacements()-1));
     }
 
     // update displacements once we've converged
@@ -196,4 +196,31 @@ void Solver::_assembleStiffnessMatrix(const Eigen::VectorXd& d)
             }
         }
     }
+}
+
+void Solver::_assembleInternalForceVector(const Eigen::VectorXd& d)
+{
+    // initial _N to all zeros
+    _N = Eigen::VectorXd::Zero(numDOF());
+
+    // assemble global internal force vector
+    for (const auto& element : _elements)
+    {
+        const std::vector<int>& element_global_DOF = element.globalDOF();
+        // get element displacement vector
+        Eigen::VectorXd d_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
+        for (int i = 0; i < NSDIMS*element.numNodes(); i++)
+        {
+            d_element[i] = d[element_global_DOF[i]];
+        }
+
+        const Eigen::Vector<double,8> element_N = element.internalForce(d_element);
+        for (int i = 0; i < 8; i++)
+        {
+            const int i_global = element_global_DOF[i];
+            _N(i_global) += element_N(i);
+        }
+    }
+
+    // std::cout << "New N:\n" << _N << std::endl;
 }

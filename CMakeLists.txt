@@ -3,6 +3,8 @@ project(NLFEM)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-O3 -Wall -Wextra")
 
+# set(CMAKE_BUILD_TYPE Debug)
+
 # fetch Eigen - used for matrix/vector math and solving linear systems
 message(CHECK_START "Fetching Eigen3")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")

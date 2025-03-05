@@ -113,10 +113,36 @@ Eigen::Matrix<double, 8, 8> QuadElement::K(const Eigen::VectorXd& d_e) const
             const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj);
             const Eigen::Vector3d strain = B_mat * d_e;
 
-            const Eigen::Matrix3d D_mat = _material->D(strain);
+            const auto [stress_vec, D_mat] = _material->materialSubroutine(strain);
             K_mat += wi * wj * B_mat.transpose() * D_mat * B_mat * J_mat.determinant();
         }
     }
 
     return K_mat;
+}
+
+Eigen::Vector<double, 8> QuadElement::internalForce(const Eigen::VectorXd& d_e) const
+{
+    assert(d_e.size() == NSDIMS*numNodes());
+
+    Eigen::Vector<double, 8> R_vec = Eigen::Vector<double, 8>::Zero();
+
+    for (unsigned i = 0; i < _integration_points.size(); i++)
+    {
+        const double ri = _integration_points[i];
+        const double wi = _integration_weights[i];
+        for (unsigned j = 0; j < _integration_points.size(); j++)
+        {
+            const double sj = _integration_points[j];
+            const double wj = _integration_weights[j];
+            const Eigen::Matrix2d J_mat = J(ri, sj);
+            const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj);
+            const Eigen::Vector3d strain = B_mat * d_e;
+
+            const auto [stress_vec, D_mat] = _material->materialSubroutine(strain);
+            R_vec += wi * wj * B_mat.transpose() * stress_vec * J_mat.determinant();
+        }
+    }
+
+    return R_vec;
 }

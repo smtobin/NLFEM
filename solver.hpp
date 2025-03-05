@@ -75,6 +75,9 @@ class Solver
     /** Assembles the global stiffness matrix, updating the class variable _K */
     void _assembleStiffnessMatrix(const Eigen::VectorXd& d);
 
+    /** Assembles the global internal force vector, updating the class variable _N */
+    void _assembleInternalForceVector(const Eigen::VectorXd& d);
+
 
     private:
     /** Stores the nodes in the input mesh. */
@@ -114,8 +117,11 @@ class Solver
     /** Global displacement vector */
     Eigen::VectorXd _U;
 
-    /** Global force vector */
+    /** Global external force vector */
     Eigen::VectorXd _R;
+
+    /** Global internal force vector */
+    Eigen::VectorXd _N;
 
     /** Material parameters */
     double _density;
