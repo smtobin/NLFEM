@@ -112,16 +112,16 @@ class Solver
     std::vector<int> _input_to_global_DOF;
 
     /** Global stiffness matrix */
-    Eigen::MatrixXd _K;
+    Eigen::MatrixXd _K_global;
 
     /** Global displacement vector */
-    Eigen::VectorXd _U;
+    Eigen::VectorXd _d_global;
 
     /** Global external force vector */
-    Eigen::VectorXd _R;
+    Eigen::VectorXd _F_ext_global;
 
     /** Global internal force vector */
-    Eigen::VectorXd _N;
+    Eigen::VectorXd _F_int_global;
 
     /** Material parameters */
     double _density;
