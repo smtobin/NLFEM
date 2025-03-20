@@ -90,18 +90,20 @@ void readInputData(const std::string& filename,
             std::string material_str;
             if (!(iss >> c >> material_str)) { assert(0); }
 
-            if (material_str == "PlaneStrain")
-            {
-                material = std::make_unique<PlaneStrainMaterial>(100, 0.25); // parameters from linear FEM assignment
-            }
-            else if (material_str == "HW3")
-            {
-                material = std::make_unique<HW3Material>(40, -50, -30); // parameters from HW3 assignment
-            }
-            else
-            {
-                assert(0);
-            }
+            material = std::make_unique<MidtermMaterial>(100, 0.3);
+
+            // if (material_str == "PlaneStrain")
+            // {
+            //     // material = std::make_unique<PlaneStrainMaterial>(100, 0.25); // parameters from linear FEM assignment
+            // }
+            // else if (material_str == "HW3")
+            // {
+            //     // material = std::make_unique<HW3Material>(40, -50, -30); // parameters from HW3 assignment
+            // }
+            // else
+            // {
+            //     assert(0);
+            // }
         }
     }
 }
@@ -125,6 +127,6 @@ int main(int argc, char** argv)
         displacement_BCs.size() << " displacement BCs, and " << force_BCs.size() << " force BCs from input file." << std::endl;
 
     Solver solver(nodes, element_nodes, displacement_BCs, force_BCs, material.get());
-    solver.solve(10);
+    solver.solve(20);
     solver.evaluateElementAtIntegrationPoints(0);
 }

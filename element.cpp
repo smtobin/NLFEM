@@ -109,11 +109,12 @@ Eigen::Matrix<double, 8, 8> QuadElement::K(const Eigen::VectorXd& d_e) const
         {
             const double sj = _integration_points[j];
             const double wj = _integration_weights[j];
+            // find deformation gradient at (r,s) given the current deformation
+            const Eigen::Matrix2d F_mat = deformationGradient(ri, sj, d_e);
             const Eigen::Matrix2d J_mat = J(ri, sj);
             const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj);
-            const Eigen::Vector3d strain = B_mat * d_e;
 
-            const auto [stress_vec, D_mat] = _material->materialSubroutine(strain);
+            const auto [stress_vec, D_mat] = _material->materialSubroutine(F_mat);
             K_mat += wi * wj * B_mat.transpose() * D_mat * B_mat * J_mat.determinant();
         }
     }
@@ -135,11 +136,12 @@ Eigen::Vector<double, 8> QuadElement::internalForce(const Eigen::VectorXd& d_e) 
         {
             const double sj = _integration_points[j];
             const double wj = _integration_weights[j];
+            // find deformation gradient at (r,s) given the current deformation
+            const Eigen::Matrix2d F_mat = deformationGradient(ri, sj, d_e);
             const Eigen::Matrix2d J_mat = J(ri, sj);
             const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj);
-            const Eigen::Vector3d strain = B_mat * d_e;
 
-            const auto [stress_vec, D_mat] = _material->materialSubroutine(strain);
+            const auto [stress_vec, D_mat] = _material->materialSubroutine(F_mat);
             R_vec += wi * wj * B_mat.transpose() * stress_vec * J_mat.determinant();
         }
     }

@@ -139,11 +139,15 @@ void Solver::evaluateElementAtIntegrationPoints(int element_index)
         {
             std::cout << std::setprecision(5);
             std::cout << "\n === At integration point (r=" << ri << ", s=" << sj << ") ===" << std::endl;
-            Eigen::Matrix<double, 3, 8> B = element.B(ri, sj);
-            Eigen::Vector3d strain_vec = B*U_element;
-            const auto [stress_vec, D_mat] = element.material()->materialSubroutine(strain_vec);
+            // find deformation gradient at (r,s) given the current deformation
+            const Eigen::Matrix2d F_mat = element.deformationGradient(ri, sj, U_element);
+            const auto [stress_vec, D_mat] = element.material()->materialSubroutine(F_mat);
+
+            // calculate Green strain
+            const Eigen::Matrix2d E_mat = 0.5*(F_mat.transpose()*F_mat - Eigen::Matrix2d::Identity());
+            const Eigen::Vector3d E_vec(E_mat(0,0), E_mat(1,1), 0.5*E_mat(0,1));
             std::cout << std::setprecision(15);
-            std::cout << "  (e_xx, e_yy, e_xy):       " << strain_vec[0] << ", " << strain_vec[1] << ", " << strain_vec[2] << std::endl;
+            std::cout << "  (e_xx, e_yy, e_xy):       " << E_vec[0] << ", " << E_vec[1] << ", " << E_vec[2] << std::endl;
             std::cout << "  (sig_xx, sig_yy, sig_xy): " << stress_vec[0] << ", " << stress_vec[1] << ", " << stress_vec[2] << std::endl;
         }
     }
