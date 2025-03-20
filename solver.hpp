@@ -59,6 +59,8 @@ class Solver
     int numUnknownDisplacements() const { return numDOF() - numKnownDisplacements(); }
     int numDOF() const { return NSDIMS*_mesh_nodes.size(); }
 
+    const std::vector<QuadElement>& elements() const { return _elements; }
+
     /** Solve the global finite element equations */
     void solve(int num_load_steps=1);
 

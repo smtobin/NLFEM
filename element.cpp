@@ -146,3 +146,46 @@ Eigen::Vector<double, 8> QuadElement::internalForce(const Eigen::VectorXd& d_e) 
 
     return R_vec;
 }
+
+Eigen::Matrix2d QuadElement::deformationGradient(double r, double s, const Eigen::VectorXd& d_e) const
+{
+    assert(d_e.size() == NSDIMS*numNodes());
+    Eigen::Matrix2d F;
+
+    // derivative of interpolation funcs wrt r
+    Eigen::Vector4d dh_dr;
+    dh_dr(0) = 0.25 * (1 + s);
+    dh_dr(1) = -0.25 * (1 + s);
+    dh_dr(2) = -0.25 * (1 - s);
+    dh_dr(3) = 0.25 * (1 - s);
+
+    // derivative of interpolation funcs wrt s
+    Eigen::Vector4d dh_ds;
+    dh_ds(0) = 0.25 * (1 + r);
+    dh_ds(1) = 0.25 * (1 - r);
+    dh_ds(2) = -0.25 * (1 - r);
+    dh_ds(3) = -0.25 * (1 + r);
+
+    // get the Jacobian operator and invert it
+    const Eigen::Matrix2d J_mat = J(r, s);
+    const Eigen::Matrix2d J_inv = J_mat.inverse();
+
+    Eigen::Matrix<double, 2, 4> dH_dr = Eigen::Matrix<double, 2, 4>::Zero();
+    for (int i = 0; i < 4; i++)
+    {
+        dH_dr(0,i) = J_inv(0,0)*dh_dr(i) + J_inv(0,1)*dh_ds(i);
+        dH_dr(1,i) = J_inv(1,0)*dh_dr(i) + J_inv(1,1)*dh_ds(i);
+    }
+
+    Eigen::Vector4d d_x(d_e[0], d_e[2], d_e[4], d_e[6]);
+    Eigen::Vector4d d_y(d_e[1], d_e[3], d_e[5], d_e[7]);
+
+    Eigen::Matrix2d du_dX;
+    du_dX.row(0) = dH_dr * d_x;
+    du_dX.row(1) = dH_dr * d_y;
+    
+
+    F = Eigen::Matrix2d::Identity() + du_dX;
+
+    return F;
+}

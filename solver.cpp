@@ -100,7 +100,23 @@ void Solver::solve(int num_load_steps)
 
         _newtonRaphson(_F_ext_global, _d_global);
     }
+
+
+    // Test out deformation gradient
+
+    const QuadElement& element = _elements[0];
+    const std::vector<double>& integration_points = element.integrationPoints();
+    const std::vector<int>& element_global_DOF = element.globalDOF();
+
+    // get element displacement vector
+    Eigen::VectorXd U_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
+    for (int i = 0; i < NSDIMS*element.numNodes(); i++)
+    {
+        U_element[i] = _d_global[element_global_DOF[i]];
+    }
     
+    Eigen::Matrix2d F = element.deformationGradient(0,0, U_element);
+    std::cout << "Deformation gradient:\n" << F << std::endl;
 }
 
 void Solver::evaluateElementAtIntegrationPoints(int element_index)

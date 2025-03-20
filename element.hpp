@@ -50,6 +50,9 @@ class QuadElement
     // evaulates the internal force vector for the element for given nodal displacements
     Eigen::Vector<double, 8> internalForce(const Eigen::VectorXd& d_e) const;
 
+    // evalutes the deformation gradient at (r,s) for given nodal displacements
+    Eigen::Matrix2d deformationGradient(double r, double s, const Eigen::VectorXd& d_e) const;
+
     const Material* material() const { return _material; }
 
     const std::vector<double>& integrationPoints() const
