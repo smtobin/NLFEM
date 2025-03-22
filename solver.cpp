@@ -98,6 +98,7 @@ void Solver::solve(int num_load_steps)
 
         // _assembleStiffnessMatrix();
 
+        std::cout << "\n=== Load Step " << k+1 << " ===" << std::endl;
         _newtonRaphson(_F_ext_global, _d_global);
     }
 
@@ -162,6 +163,8 @@ void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd&
 
     Eigen::VectorXd d = d0;
 
+    std::cout << "Iter\tRes\n----\t---" << std::endl; 
+
     for (int i = 0; i < NR_MAX_ITER; i++)
     {
         // check if we've converged
@@ -182,6 +185,7 @@ void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd&
         _assembleInternalForceVector(d);
 
         res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - _F_int_global(Eigen::seq(0, numUnknownDisplacements()-1));
+        std::cout << i << "\t" << res.squaredNorm() << std::endl;
     }
 
     // update displacements once we've converged
