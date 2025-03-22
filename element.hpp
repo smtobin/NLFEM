@@ -35,11 +35,11 @@ class QuadElement
     // evaluates the interpolation matrix H at (r,s)
     Eigen::Matrix<double, 2, 8> H(double r, double s) const;
 
-    // evaluates the strain-displacement matrix B at (r,s)
-    Eigen::Matrix<double, 3, 8> B(double r, double s) const;
+    // evaluates the strain-displacement matrix B at (r,s) for given nodal displacements
+    Eigen::Matrix<double, 3, 8> B(double r, double s, const Eigen::VectorXd& d_e) const;
 
-    // evaluates the Jacobian operator matrix at (r,s)
-    Eigen::Matrix2d J(double r, double s) const;
+    // evaluates the Jacobian operator matrix at (r,s) for given nodal displacements
+    Eigen::Matrix2d J(double r, double s, const Eigen::VectorXd& d_e) const;
 
     // evalutes the mass matrix M for the element
     // Eigen::Matrix<double, 8, 8> M() const;
