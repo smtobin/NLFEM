@@ -117,7 +117,9 @@ void Solver::solve(int num_load_steps)
     }
     
     Eigen::Matrix2d F = element.deformationGradient(0,0, U_element);
-    std::cout << "Deformation gradient:\n" << F << std::endl;
+    std::cout << "Deformation gradient at (r=0, s=0):\n" << F << std::endl;
+    F = element.deformationGradient(0, 0.5, U_element);
+    std::cout << "Deformation gradient at (r=0,s=0.5):\n" << F << std::endl;
 }
 
 void Solver::evaluateElementAtIntegrationPoints(int element_index)

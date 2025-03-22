@@ -104,7 +104,8 @@ Eigen::Matrix<double, 8, 8> QuadElement::K(const Eigen::VectorXd& d_e) const
 {
     assert(d_e.size() == NSDIMS*numNodes());
 
-    Eigen::Matrix<double, 8, 8> K_mat = Eigen::Matrix<double, 8, 8>::Zero();
+    Eigen::Matrix<double, 8, 8> K_c = Eigen::Matrix<double, 8, 8>::Zero();
+    Eigen::Matrix<double, 8, 8> K_sigma = Eigen::Matrix<double, 8, 8>::Zero();
     
     for (unsigned i = 0; i < _integration_points.size(); i++)
     {
@@ -120,11 +121,55 @@ Eigen::Matrix<double, 8, 8> QuadElement::K(const Eigen::VectorXd& d_e) const
             const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj, d_e);
 
             const auto [stress_vec, D_mat] = _material->materialSubroutine(F_mat);
-            K_mat += wi * wj * B_mat.transpose() * D_mat * B_mat * J_mat.determinant();
+            K_c += wi * wj * B_mat.transpose() * D_mat * B_mat * J_mat.determinant();
+
+            // NEW STUFF
+            // derivative of interpolation funcs wrt r
+            Eigen::Vector4d dh_dr;
+            dh_dr(0) = 0.25 * (1 + sj);
+            dh_dr(1) = -0.25 * (1 + sj);
+            dh_dr(2) = -0.25 * (1 - sj);
+            dh_dr(3) = 0.25 * (1 - sj);
+
+            // derivative of interpolation funcs wrt s
+            Eigen::Vector4d dh_ds;
+            dh_ds(0) = 0.25 * (1 + ri);
+            dh_ds(1) = 0.25 * (1 - ri);
+            dh_ds(2) = -0.25 * (1 - ri);
+            dh_ds(3) = -0.25 * (1 + ri);
+
+            // get the Jacobian operator and invert it
+            const Eigen::Matrix2d J_inv = J_mat.inverse();
+
+            // derivative of the shape functions wrt current coordiantes, x
+            Eigen::Matrix<double, 2, 4> dH_dx = Eigen::Matrix<double, 2, 4>::Zero();
+            for (int i = 0; i < 4; i++)
+            {
+                dH_dx(0,i) = J_inv(0,0)*dh_dr(i) + J_inv(0,1)*dh_ds(i);
+                dH_dx(1,i) = J_inv(1,0)*dh_dr(i) + J_inv(1,1)*dh_ds(i);
+            }
+
+            Eigen::Matrix2d sigma_mat;
+            sigma_mat(0,0) = stress_vec[0];
+            sigma_mat(1,1) = stress_vec[1];
+            sigma_mat(0,1) = stress_vec[2];
+            sigma_mat(1,0) = sigma_mat(0,1);
+            for (int a = 0; a < 4; a++)
+            {
+                Eigen::Vector2d grad_Na = dH_dx.col(a);
+                for (int b = 0; b < 4; b++)
+                {
+                    Eigen::Vector2d grad_Nb = dH_dx.col(b);
+                    double val = wi * wj * (grad_Na.transpose() * sigma_mat * grad_Nb)(0,0) * J_mat.determinant();
+                    K_sigma.block<2,2>(2*a, 2*b) += val * Eigen::Matrix2d::Identity();
+                }
+            }
         }
     }
 
-    return K_mat;
+    // std::cout << "K_c:\n" << K_c << "\nK_sigma:\n" << K_sigma << std::endl;
+
+    return K_c + K_sigma;
 }
 
 Eigen::Vector<double, 8> QuadElement::internalForce(const Eigen::VectorXd& d_e) const
@@ -177,19 +222,20 @@ Eigen::Matrix2d QuadElement::deformationGradient(double r, double s, const Eigen
     const Eigen::Matrix2d J_mat = J(r, s, d_e);
     const Eigen::Matrix2d J_inv = J_mat.inverse();
 
-    Eigen::Matrix<double, 2, 4> dH_dr = Eigen::Matrix<double, 2, 4>::Zero();
+    // derivative of the shape functions wrt current coordiantes, x
+    Eigen::Matrix<double, 2, 4> dH_dx = Eigen::Matrix<double, 2, 4>::Zero();
     for (int i = 0; i < 4; i++)
     {
-        dH_dr(0,i) = J_inv(0,0)*dh_dr(i) + J_inv(0,1)*dh_ds(i);
-        dH_dr(1,i) = J_inv(1,0)*dh_dr(i) + J_inv(1,1)*dh_ds(i);
+        dH_dx(0,i) = J_inv(0,0)*dh_dr(i) + J_inv(0,1)*dh_ds(i);
+        dH_dx(1,i) = J_inv(1,0)*dh_dr(i) + J_inv(1,1)*dh_ds(i);
     }
 
     Eigen::Vector4d d_x(d_e[0], d_e[2], d_e[4], d_e[6]);
     Eigen::Vector4d d_y(d_e[1], d_e[3], d_e[5], d_e[7]);
 
     Eigen::Matrix2d du_dX;
-    du_dX.row(0) = dH_dr * d_x;
-    du_dX.row(1) = dH_dr * d_y;
+    du_dX.row(0) = dH_dx * d_x;
+    du_dX.row(1) = dH_dx * d_y;
     
 
     F = Eigen::Matrix2d::Identity() + du_dX;
