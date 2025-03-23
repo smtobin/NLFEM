@@ -14,11 +14,11 @@ e 0 1 2 3
 d 0 x 0
 d 0 y 0
 d 1 x 0
-d 1 y 0.5
+d 1 y 0
 d 2 x 0
 d 2 y 0.5
 d 3 x 0
-d 3 y 0
+d 3 y 0.5
 
 # force BC - node index, axis (x or y), force
 # example: f 0 x 10

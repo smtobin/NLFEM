@@ -38,8 +38,10 @@ class QuadElement
     // evaluates the strain-displacement matrix B at (r,s) for given nodal displacements
     Eigen::Matrix<double, 3, 8> B(double r, double s, const Eigen::VectorXd& d_e) const;
 
-    // evaluates the Jacobian operator matrix at (r,s) for given nodal displacements
-    Eigen::Matrix2d J(double r, double s, const Eigen::VectorXd& d_e) const;
+    // evaluates the Jacobian operator matrix at (r,s) wrt deformed configuration for given nodal displacements
+    Eigen::Matrix2d DeformedJacobian(double r, double s, const Eigen::VectorXd& d_e) const;
+
+    Eigen::Matrix2d UndeformedJacobian(double r, double s) const;
 
     // evalutes the mass matrix M for the element
     // Eigen::Matrix<double, 8, 8> M() const;

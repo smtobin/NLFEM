@@ -32,7 +32,7 @@ Eigen::Matrix<double, 3, 8> QuadElement::B(double r, double s, const Eigen::Vect
     dh_ds(3) = -0.25 * (1 + r);
 
     // get the Jacobian operator and invert it
-    const Eigen::Matrix2d J_mat = J(r, s, d_e);
+    const Eigen::Matrix2d J_mat = DeformedJacobian(r, s, d_e);
     const Eigen::Matrix2d J_inv = J_mat.inverse();
 
     // assemble B
@@ -53,7 +53,7 @@ Eigen::Matrix<double, 3, 8> QuadElement::B(double r, double s, const Eigen::Vect
     return B_mat;
 }
 
-Eigen::Matrix2d QuadElement::J(double r, double s, const Eigen::VectorXd& d_e) const
+Eigen::Matrix2d QuadElement::DeformedJacobian(double r, double s, const Eigen::VectorXd& d_e) const
 {
     double dh1_dr = 0.25 * (1 + s);
     double dh2_dr = -0.25 * (1 + s);
@@ -75,6 +75,27 @@ Eigen::Matrix2d QuadElement::J(double r, double s, const Eigen::VectorXd& d_e) c
                 dh1_dr*x1_cur[1] + dh2_dr*x2_cur[1] + dh3_dr*x3_cur[1] + dh4_dr*x4_cur[1],
                 dh1_ds*x1_cur[0] + dh2_ds*x2_cur[0] + dh3_ds*x3_cur[0] + dh4_ds*x4_cur[0],
                 dh1_ds*x1_cur[1] + dh2_ds*x2_cur[1] + dh3_ds*x3_cur[1] + dh4_ds*x4_cur[1];
+    
+    return J_mat;
+}
+
+Eigen::Matrix2d QuadElement::UndeformedJacobian(double r, double s) const
+{
+    double dh1_dr = 0.25 * (1 + s);
+    double dh2_dr = -0.25 * (1 + s);
+    double dh3_dr = -0.25 * (1 - s);
+    double dh4_dr = 0.25 * (1 - s);
+
+    double dh1_ds = 0.25 * (1 + r);
+    double dh2_ds = 0.25 * (1 - r);
+    double dh3_ds = -0.25 * (1 - r);
+    double dh4_ds = -0.25 * (1 + r);
+
+    Eigen::Matrix2d J_mat;
+    J_mat <<    dh1_dr*_x1[0] + dh2_dr*_x2[0] + dh3_dr*_x3[0] + dh4_dr*_x4[0],
+                dh1_dr*_x1[1] + dh2_dr*_x2[1] + dh3_dr*_x3[1] + dh4_dr*_x4[1],
+                dh1_ds*_x1[0] + dh2_ds*_x2[0] + dh3_ds*_x3[0] + dh4_ds*_x4[0],
+                dh1_ds*_x1[1] + dh2_ds*_x2[1] + dh3_ds*_x3[1] + dh4_ds*_x4[1];
     
     return J_mat;
 }
@@ -117,7 +138,7 @@ Eigen::Matrix<double, 8, 8> QuadElement::K(const Eigen::VectorXd& d_e) const
             const double wj = _integration_weights[j];
             // find deformation gradient at (r,s) given the current deformation
             const Eigen::Matrix2d F_mat = deformationGradient(ri, sj, d_e);
-            const Eigen::Matrix2d J_mat = J(ri, sj, d_e);
+            const Eigen::Matrix2d J_mat = DeformedJacobian(ri, sj, d_e);
             const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj, d_e);
 
             const auto [stress_vec, D_mat] = _material->materialSubroutine(F_mat);
@@ -188,7 +209,7 @@ Eigen::Vector<double, 8> QuadElement::internalForce(const Eigen::VectorXd& d_e) 
             const double wj = _integration_weights[j];
             // find deformation gradient at (r,s) given the current deformation
             const Eigen::Matrix2d F_mat = deformationGradient(ri, sj, d_e);
-            const Eigen::Matrix2d J_mat = J(ri, sj, d_e);
+            const Eigen::Matrix2d J_mat = DeformedJacobian(ri, sj, d_e);
             const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj, d_e);
 
             const auto [stress_vec, D_mat] = _material->materialSubroutine(F_mat);
@@ -219,8 +240,9 @@ Eigen::Matrix2d QuadElement::deformationGradient(double r, double s, const Eigen
     dh_ds(3) = -0.25 * (1 + r);
 
     // get the Jacobian operator and invert it
-    const Eigen::Matrix2d J_mat = J(r, s, d_e);
-    const Eigen::Matrix2d J_inv = J_mat.inverse();
+    // const Eigen::Matrix2d J_mat = J(r, s, d_e);
+    const Eigen::Matrix2d J_undeformed = UndeformedJacobian(r, s);
+    const Eigen::Matrix2d J_inv = J_undeformed.inverse();
 
     // derivative of the shape functions wrt current coordiantes, x
     Eigen::Matrix<double, 2, 4> dH_dx = Eigen::Matrix<double, 2, 4>::Zero();

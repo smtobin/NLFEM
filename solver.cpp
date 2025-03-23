@@ -106,7 +106,6 @@ void Solver::solve(int num_load_steps)
     // Test out deformation gradient
 
     const QuadElement& element = _elements[0];
-    const std::vector<double>& integration_points = element.integrationPoints();
     const std::vector<int>& element_global_DOF = element.globalDOF();
 
     // get element displacement vector
@@ -120,6 +119,8 @@ void Solver::solve(int num_load_steps)
     std::cout << "Deformation gradient at (r=0, s=0):\n" << F << std::endl;
     F = element.deformationGradient(0, 0.5, U_element);
     std::cout << "Deformation gradient at (r=0,s=0.5):\n" << F << std::endl;
+
+    std::cout << "U_element:\n" << U_element << std::endl;
 }
 
 void Solver::evaluateElementAtIntegrationPoints(int element_index)
