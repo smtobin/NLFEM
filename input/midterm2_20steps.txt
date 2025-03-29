@@ -1,5 +1,13 @@
-# material - choose from "PlaneStrain" or "HW3"
-m HW3
+# 1x1 square element
+# Pin joints at bottom nodes (nodes 0 and 1)
+# Prescribed positive 0.2 x displacement at top nodes (nodes 2 and 3)
+# y DOF at top nodes free
+
+# material
+m Midterm
+
+# load steps
+l 20
 
 # nodes - index, x, y
 n 0 0 0
@@ -15,10 +23,8 @@ d 0 x 0
 d 0 y 0
 d 1 x 0
 d 1 y 0
-d 2 x 0
-d 2 y 0.5
-d 3 x 0
-d 3 y 0.5
+d 2 x 0.2
+d 3 x 0.2
 
 # force BC - node index, axis (x or y), force
 # example: f 0 x 10

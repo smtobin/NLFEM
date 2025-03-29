@@ -33,6 +33,7 @@ Eigen::Matrix<double, 3, 8> QuadElement::B(double r, double s, const Eigen::Vect
 
     // get the Jacobian operator and invert it
     const Eigen::Matrix2d J_mat = DeformedJacobian(r, s, d_e);
+    // const Eigen::Matrix2d J_mat = UndeformedJacobian(r, s);
     const Eigen::Matrix2d J_inv = J_mat.inverse();
 
     // assemble B
@@ -139,6 +140,7 @@ Eigen::Matrix<double, 8, 8> QuadElement::K(const Eigen::VectorXd& d_e) const
             // find deformation gradient at (r,s) given the current deformation
             const Eigen::Matrix2d F_mat = deformationGradient(ri, sj, d_e);
             const Eigen::Matrix2d J_mat = DeformedJacobian(ri, sj, d_e);
+            // const Eigen::Matrix2d J_mat = UndeformedJacobian(ri, sj);
             const Eigen::Matrix<double, 3, 8> B_mat = B(ri, sj, d_e);
 
             const auto [stress_vec, D_mat] = _material->materialSubroutine(F_mat);

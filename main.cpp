@@ -33,7 +33,8 @@ const double density = 1;
 void readInputData(const std::string& filename,
                    std::vector<Node>& nodes, std::vector<ElementNodes>& element_nodes,
                    std::vector<DisplacementBC>& displacement_BCs, std::vector<ForceBC>& force_BCs,
-                   std::unique_ptr<Material>& material)
+                   std::unique_ptr<Material>& material,
+                   int& num_load_steps)
 {
     std::ifstream infile(filename);
     if (!infile.good())
@@ -105,6 +106,10 @@ void readInputData(const std::string& filename,
             //     assert(0);
             // }
         }
+        else if (line[0] == 'l')
+        {
+            if (!(iss >> c >> num_load_steps)) { assert(0); }
+        }
     }
 }
 
@@ -120,13 +125,15 @@ int main(int argc, char** argv)
     std::vector<DisplacementBC> displacement_BCs;
     std::vector<ForceBC> force_BCs;
     std::unique_ptr<Material> material;
+    int num_load_steps = 10;
 
-    readInputData(input_filename, nodes, element_nodes, displacement_BCs, force_BCs, material);
+    readInputData(input_filename, nodes, element_nodes, displacement_BCs, force_BCs, material, num_load_steps);
 
     std::cout << "Read in " << nodes.size() << " nodes, " << element_nodes.size() << " elements, " <<
         displacement_BCs.size() << " displacement BCs, and " << force_BCs.size() << " force BCs from input file." << std::endl;
 
     Solver solver(nodes, element_nodes, displacement_BCs, force_BCs, material.get());
-    solver.solve(10);
-    solver.evaluateElementAtIntegrationPoints(0);
+    solver.solve(num_load_steps);
+    // solver.evaluateElementAtIntegrationPoints(0);
+    solver.printElementNodalDisplacements(0);
 }

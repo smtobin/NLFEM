@@ -67,6 +67,9 @@ class Solver
     /** Evaluate element strains and stresses at integration points */
     void evaluateElementAtIntegrationPoints(int element_index);
 
+    /** Print out element nodal displacements. */
+    void printElementNodalDisplacements(int element_index) const;
+
     private:
     /** Helper method to set up the DOF numbering based on the input mesh and BCs */
     void _setupDOF();

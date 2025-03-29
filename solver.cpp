@@ -1,4 +1,5 @@
 #include "solver.hpp"
+#include "thirdparty/gplot++.h"
 
 #include <iomanip>
 
@@ -78,6 +79,16 @@ void Solver::solve(int num_load_steps)
     _d_global = Eigen::VectorXd::Zero(numDOF());
     _F_ext_global = Eigen::VectorXd::Zero(numDOF());
 
+    // midterm-specific plotting
+    // store sigma and Green strain at integration point 3 for each time step
+    // store displacement at node 3 for each time step
+    std::vector<double> ux_node3(num_load_steps+1), uy_node3(num_load_steps+1),
+         sigma11_ip3(num_load_steps+1), sigma22_ip3(num_load_steps+1), sigma12_ip3(num_load_steps+1),
+         E11_ip3(num_load_steps+1), E22_ip3(num_load_steps+1), E12_ip3(num_load_steps+1);
+    ux_node3[0] = 0; uy_node3[0] = 0;
+    sigma11_ip3[0] = 0; sigma22_ip3[0] = 0; sigma12_ip3[0] = 0;
+    E11_ip3[0] = 0; E22_ip3[0] = 0; E12_ip3[0] = 0;
+
     for (int k = 0; k < num_load_steps; k++)
     {
         // put in known displacements and forces
@@ -100,27 +111,65 @@ void Solver::solve(int num_load_steps)
 
         std::cout << "\n=== Load Step " << k+1 << " ===" << std::endl;
         _newtonRaphson(_F_ext_global, _d_global);
+
+        printElementNodalDisplacements(0);
+
+        // midterm-specific plotting
+        const QuadElement& element = _elements[0];
+        const std::vector<double>& integration_points = element.integrationPoints();
+        const std::vector<int>& element_global_DOF = element.globalDOF();
+
+        // get element displacement vector
+        Eigen::VectorXd U_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
+        for (int i = 0; i < NSDIMS*element.numNodes(); i++)
+        {
+            U_element[i] = _d_global[element_global_DOF[i]];
+        }
+
+        double ri = integration_points[1];
+        double sj = integration_points[1];
+        // find deformation gradient at (r,s) given the current deformation
+        const Eigen::Matrix2d F_mat = element.deformationGradient(ri, sj, U_element);
+        const auto [stress_vec, D_mat] = element.material()->materialSubroutine(F_mat);
+
+        // calculate Green strain
+        const Eigen::Matrix2d E_mat = 0.5*(F_mat.transpose()*F_mat - Eigen::Matrix2d::Identity());
+        const Eigen::Vector3d E_vec(E_mat(0,0), E_mat(1,1), 0.5*E_mat(0,1));
+        ux_node3[k+1] = U_element[4]; uy_node3[k+1] = U_element[5];
+        sigma11_ip3[k+1] = stress_vec[0]; sigma22_ip3[k+1] = stress_vec[1]; sigma12_ip3[k+1] = stress_vec[2];
+        E11_ip3[k+1] = E_vec[0]; E22_ip3[k+1] = E_vec[1]; E12_ip3[k+1] = E_vec[2];
     }
 
+    // plot using GNU plot
+    Gnuplot plt{};
 
-    // Test out deformation gradient
-
-    const QuadElement& element = _elements[0];
-    const std::vector<int>& element_global_DOF = element.globalDOF();
-
-    // get element displacement vector
-    Eigen::VectorXd U_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
-    for (int i = 0; i < NSDIMS*element.numNodes(); i++)
-    {
-        U_element[i] = _d_global[element_global_DOF[i]];
-    }
-    
-    Eigen::Matrix2d F = element.deformationGradient(0,0, U_element);
-    std::cout << "Deformation gradient at (r=0, s=0):\n" << F << std::endl;
-    F = element.deformationGradient(0, 0.5, U_element);
-    std::cout << "Deformation gradient at (r=0,s=0.5):\n" << F << std::endl;
-
-    std::cout << "U_element:\n" << U_element << std::endl;
+    std::vector<double> time(num_load_steps+1);
+    for (int i = 0; i < num_load_steps+1; i++) { time[i] = (double)i/num_load_steps;}
+    plt.sendcommand("set terminal wxt size 1500,500"); 
+    plt.multiplot(1, 3, "Midterm Plots");
+    // plot 1 - sigma vs time
+    plt.set_title("sigma (IP3) vs. time");
+    plt.set_xlabel("Time");
+    plt.set_ylabel("sigma");
+    plt.plot(time, sigma11_ip3, "sigma_{11}");
+    plt.plot(time, sigma22_ip3, "sigma_{22}");
+    plt.plot(time, sigma12_ip3, "sigma_{12}");
+    plt.show();
+    // plot 2 - sigma vs strain
+    plt.set_title("sigma (IP3) vs E_{11}");
+    plt.set_xlabel("E_{11}");
+    plt.set_ylabel("sigma");
+    plt.plot(E11_ip3, sigma11_ip3, "sigma_{11}");
+    plt.plot(E11_ip3, sigma22_ip3, "sigma_{22}");
+    plt.plot(E11_ip3, sigma12_ip3, "sigma_{12}");
+    plt.show();
+    // plot 3 - displacement vs time
+    plt.set_title("displacement (node 3) vs. time");
+    plt.set_xlabel("time");
+    plt.set_ylabel("displacement");
+    plt.plot(time, ux_node3, "u_x");
+    plt.plot(time, uy_node3, "u_y");
+    plt.show();
 }
 
 void Solver::evaluateElementAtIntegrationPoints(int element_index)
@@ -155,6 +204,28 @@ void Solver::evaluateElementAtIntegrationPoints(int element_index)
             std::cout << "  (sig_xx, sig_yy, sig_xy): " << stress_vec[0] << ", " << stress_vec[1] << ", " << stress_vec[2] << std::endl;
         }
     }
+}
+
+void Solver::printElementNodalDisplacements(int element_index) const
+{
+    const QuadElement& element = _elements[element_index];
+    const std::vector<int>& element_global_DOF = element.globalDOF();
+
+    // get element displacement vector
+    Eigen::VectorXd U_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
+    for (int i = 0; i < NSDIMS*element.numNodes(); i++)
+    {
+        U_element[i] = _d_global[element_global_DOF[i]];
+    }
+
+    std::cout << "\n\n=== Element " << element_index << " displacements ===" << std::endl;
+    std::cout << "\tx\t\t\ty\t\n----------------\t----------------" << std::endl;
+    std::cout << std::setprecision(15);
+    for (int i = 0; i < U_element.size(); i+=2)
+    {
+        std::cout << std::setw(16) << U_element[i] << "\t" << U_element[i+1] << std::endl;
+    }
+
 }
 
 void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0)
