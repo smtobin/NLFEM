@@ -6,6 +6,8 @@
 
 #include <Eigen/Dense>
 
+typedef Eigen::Matrix<double, 6, 6> Matrix6d;
+typedef Eigen::Vector<double, 6> Vector6d;
 typedef Eigen::Vector<double, NSDIMS> Node;
 typedef Eigen::Vector<int, 4> ElementNodes;
 
