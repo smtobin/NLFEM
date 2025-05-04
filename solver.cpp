@@ -79,15 +79,8 @@ void Solver::solve(int num_load_steps)
     _d_global = Eigen::VectorXd::Zero(numDOF());
     _F_ext_global = Eigen::VectorXd::Zero(numDOF());
 
-    // midterm-specific plotting
-    // store sigma and Green strain at integration point 3 for each time step
-    // store displacement at node 3 for each time step
-    std::vector<double> ux_node3(num_load_steps+1), uy_node3(num_load_steps+1),
-         sigma11_ip3(num_load_steps+1), sigma22_ip3(num_load_steps+1), sigma12_ip3(num_load_steps+1),
-         E11_ip3(num_load_steps+1), E22_ip3(num_load_steps+1), E12_ip3(num_load_steps+1);
-    ux_node3[0] = 0; uy_node3[0] = 0;
-    sigma11_ip3[0] = 0; sigma22_ip3[0] = 0; sigma12_ip3[0] = 0;
-    E11_ip3[0] = 0; E22_ip3[0] = 0; E12_ip3[0] = 0;
+    // HW6 plotting
+    std::vector<double> sigma_11, sigma_22, sigma_12, alpha, beta_11, beta_22, beta_12, C_1111, C_2222, C_1212, times;
 
     for (int k = 0; k < num_load_steps; k++)
     {
@@ -112,7 +105,14 @@ void Solver::solve(int num_load_steps)
         std::cout << "\n=== Load Step " << k+1 << " ===" << std::endl;
         _newtonRaphson(_F_ext_global, _d_global);
 
+        // after we've converged, update plastic state for each element (save the latest plastic state for the next time step)
+        for (unsigned i = 0; i < _elements.size(); i++)
+        {
+            _elements[i].updatePlasticState();
+        }
+
         printElementNodalDisplacements(0);
+        // break;
 
         // midterm-specific plotting
         const QuadElement& element = _elements[0];
@@ -128,82 +128,56 @@ void Solver::solve(int num_load_steps)
 
         double ri = integration_points[1];
         double sj = integration_points[1];
-        // find deformation gradient at (r,s) given the current deformation
-        const Eigen::Matrix2d F_mat = element.deformationGradient(ri, sj, U_element);
-        const auto [stress_vec, D_mat] = element.material()->materialSubroutine(F_mat);
+        const Eigen::Matrix2d J_mat = element.UndeformedJacobian(ri, sj);
+        const Eigen::Matrix<double, 3, 8> B_mat = element.B(ri, sj, U_element);
+        Eigen::Vector3d strain = B_mat * U_element;
+        Vector6d strain_6d;
+        strain_6d << strain, Eigen::Vector3d::Zero();
 
-        // calculate Green strain
-        const Eigen::Matrix2d E_mat = 0.5*(F_mat.transpose()*F_mat - Eigen::Matrix2d::Identity());
-        const Eigen::Vector3d E_vec(E_mat(0,0), E_mat(1,1), 0.5*E_mat(0,1));
-        ux_node3[k+1] = U_element[4]; uy_node3[k+1] = U_element[5];
-        sigma11_ip3[k+1] = stress_vec[0]; sigma22_ip3[k+1] = stress_vec[1]; sigma12_ip3[k+1] = stress_vec[2];
-        E11_ip3[k+1] = E_vec[0]; E22_ip3[k+1] = E_vec[1]; E12_ip3[k+1] = E_vec[2];
+        const auto [stress_vec_6d, D_mat_6d, new_plastic_state] = _material->materialSubroutine(strain_6d, element.lastPlasticState(1,1));
+
+        sigma_11.push_back(stress_vec_6d[0]); sigma_22.push_back(stress_vec_6d[1]); sigma_12.push_back(stress_vec_6d[5]);
+        alpha.push_back(new_plastic_state.alpha);
+        beta_11.push_back(new_plastic_state.beta[0]); beta_22.push_back(new_plastic_state.beta[1]); beta_12.push_back(new_plastic_state.beta[5]);
+        C_1111.push_back(D_mat_6d(0,0)); C_2222.push_back(D_mat_6d(1,1)); C_1212.push_back(D_mat_6d(5,5));
+        times.push_back(k*0.01);
     }
 
     // plot using GNU plot
     Gnuplot plt{};
 
-    std::vector<double> time(num_load_steps+1);
-    for (int i = 0; i < num_load_steps+1; i++) { time[i] = (double)i/num_load_steps;}
     plt.sendcommand("set terminal wxt size 1500,500"); 
-    plt.multiplot(1, 3, "Midterm Plots");
+    plt.multiplot(1, 4, "HW6 (a)");
     // plot 1 - sigma vs time
-    plt.set_title("sigma (IP3) vs. time");
+    plt.set_title("sigma vs. time");
     plt.set_xlabel("Time");
     plt.set_ylabel("sigma");
-    plt.plot(time, sigma11_ip3, "sigma_{11}");
-    plt.plot(time, sigma22_ip3, "sigma_{22}");
-    plt.plot(time, sigma12_ip3, "sigma_{12}");
+    plt.plot(times, sigma_11, "sigma_{11}");
+    plt.plot(times, sigma_22, "sigma_{22}");
+    plt.plot(times, sigma_12, "sigma_{12}");
     plt.show();
-    // plot 2 - sigma vs strain
-    plt.set_title("sigma (IP3) vs E_{11}");
-    plt.set_xlabel("E_{11}");
-    plt.set_ylabel("sigma");
-    plt.plot(E11_ip3, sigma11_ip3, "sigma_{11}");
-    plt.plot(E11_ip3, sigma22_ip3, "sigma_{22}");
-    plt.plot(E11_ip3, sigma12_ip3, "sigma_{12}");
+    // plot 2 - alpha vs time
+    plt.set_title("alpha vs time");
+    plt.set_xlabel("time");
+    plt.set_ylabel("alpha");
+    plt.plot(times, alpha, "alpha");
     plt.show();
     // plot 3 - displacement vs time
-    plt.set_title("displacement (node 3) vs. time");
+    plt.set_title("beta vs. time");
     plt.set_xlabel("time");
-    plt.set_ylabel("displacement");
-    plt.plot(time, ux_node3, "u_x");
-    plt.plot(time, uy_node3, "u_y");
+    plt.set_ylabel("beta");
+    plt.plot(times, beta_11, "beta_{11}");
+    plt.plot(times, beta_22, "beta_{22}");
+    plt.plot(times, beta_12, "beta_{12}");
     plt.show();
-}
-
-void Solver::evaluateElementAtIntegrationPoints(int element_index)
-{
-    const QuadElement& element = _elements[element_index];
-    const std::vector<double>& integration_points = element.integrationPoints();
-    const std::vector<int>& element_global_DOF = element.globalDOF();
-
-    // get element displacement vector
-    Eigen::VectorXd U_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
-    for (int i = 0; i < NSDIMS*element.numNodes(); i++)
-    {
-        U_element[i] = _d_global[element_global_DOF[i]];
-    }
-
-    // evaluate stress and strain at element integration points
-    for (const auto& ri : integration_points)
-    {
-        for (const auto& sj : integration_points)
-        {
-            std::cout << std::setprecision(5);
-            std::cout << "\n === At integration point (r=" << ri << ", s=" << sj << ") ===" << std::endl;
-            // find deformation gradient at (r,s) given the current deformation
-            const Eigen::Matrix2d F_mat = element.deformationGradient(ri, sj, U_element);
-            const auto [stress_vec, D_mat] = element.material()->materialSubroutine(F_mat);
-
-            // calculate Green strain
-            const Eigen::Matrix2d E_mat = 0.5*(F_mat.transpose()*F_mat - Eigen::Matrix2d::Identity());
-            const Eigen::Vector3d E_vec(E_mat(0,0), E_mat(1,1), 0.5*E_mat(0,1));
-            std::cout << std::setprecision(15);
-            std::cout << "  (e_xx, e_yy, e_xy):       " << E_vec[0] << ", " << E_vec[1] << ", " << E_vec[2] << std::endl;
-            std::cout << "  (sig_xx, sig_yy, sig_xy): " << stress_vec[0] << ", " << stress_vec[1] << ", " << stress_vec[2] << std::endl;
-        }
-    }
+    // plot 3 - moduli vs time
+    plt.set_title("C_{ep} vs. time");
+    plt.set_xlabel("time");
+    plt.set_ylabel("C_{ep}");
+    plt.plot(times, C_1111, "C_{1111}");
+    plt.plot(times, C_2222, "C_{2222}");
+    plt.plot(times, C_1212, "C_{1212}");
+    plt.show();
 }
 
 void Solver::printElementNodalDisplacements(int element_index) const
@@ -231,74 +205,48 @@ void Solver::printElementNodalDisplacements(int element_index) const
 void Solver::_newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0)
 {
     // compute initial residual
-    _assembleInternalForceVector(d0);
-    Eigen::VectorXd res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - _F_int_global(Eigen::seq(0, numUnknownDisplacements()-1));
-    double res0_norm = res.squaredNorm();
+    // _assembleInternalForceVector(d0);
+    // Eigen::VectorXd res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - _F_int_global(Eigen::seq(0, numUnknownDisplacements()-1));
+    double res0_norm = 0;
 
     Eigen::VectorXd d = d0;
+    Eigen::VectorXd res(numUnknownDisplacements());
 
     std::cout << "Iter\tRes\n----\t---" << std::endl; 
 
     for (int i = 0; i < NR_MAX_ITER; i++)
     {
+        // recompute internal force at new d
+        _assembly(d);
+
+        res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - _F_int_global(Eigen::seq(0, numUnknownDisplacements()-1));
+        if (i == 0)
+            res0_norm = res.squaredNorm();
+
+        std::cout << i << "\t" << res.squaredNorm() << std::endl;
+
         // check if we've converged
         if (res.squaredNorm() < res0_norm * NR_TOL)
         {
             break;
         }
 
-        _assembleStiffnessMatrix(d);
-
         // delta d = K^-1*R
         // we only do this for the unknown displacements, which are the first numUnknownDisplacements() rows in K and the residual
         Eigen::MatrixXd K_unknown = _K_global.block(0,0,numUnknownDisplacements(), numUnknownDisplacements());
         Eigen::VectorXd delta_d = K_unknown.llt().solve(res);
+        // std::cout << "\ndelta_d\n" << delta_d << std::endl;
         d(Eigen::seq(0,numUnknownDisplacements()-1)) += delta_d;
-
-        // recompute internal force at new d
-        _assembleInternalForceVector(d);
-
-        res = F_ext(Eigen::seq(0,numUnknownDisplacements()-1)) - _F_int_global(Eigen::seq(0, numUnknownDisplacements()-1));
-        std::cout << i << "\t" << res.squaredNorm() << std::endl;
     }
 
     // update displacements once we've converged
     _d_global = d;
 }
 
-void Solver::_assembleStiffnessMatrix(const Eigen::VectorXd& d)
+void Solver::_assembly(const Eigen::VectorXd& d)
 {
-    // initialize K to all zeros
-    _K_global = Eigen::MatrixXd::Zero(numDOF(), numDOF());
-
-    // assemble global stiffness matrix
-    for (const auto& element : _elements)
-    {
-        const std::vector<int>& element_global_DOF = element.globalDOF();
-        // get element displacement vector
-        Eigen::VectorXd d_element = Eigen::VectorXd::Zero(NSDIMS*element.numNodes());
-        for (int i = 0; i < NSDIMS*element.numNodes(); i++)
-        {
-            d_element[i] = d[element_global_DOF[i]];
-        }
-        
-        const Eigen::Matrix<double, 8, 8> element_K = element.K(d_element);
-        for (int i = 0; i < 8; i++)
-        {
-            const int i_global = element_global_DOF[i];
-            for (int j = 0; j < 8; j++)
-            {  
-                const int j_global = element_global_DOF[j];
-                _K_global(i_global, j_global) += element_K(i, j);
-            }
-        }
-    }
-}
-
-void Solver::_assembleInternalForceVector(const Eigen::VectorXd& d)
-{
-    // initial _F_int_global to all zeros
     _F_int_global = Eigen::VectorXd::Zero(numDOF());
+    _K_global = Eigen::MatrixXd::Zero(numDOF(), numDOF());
 
     // assemble global internal force vector
     for (const auto& element : _elements)
@@ -311,11 +259,17 @@ void Solver::_assembleInternalForceVector(const Eigen::VectorXd& d)
             d_element[i] = d[element_global_DOF[i]];
         }
 
-        const Eigen::Vector<double,8> element_F_int = element.internalForce(d_element);
+        const auto [element_F_int, element_K] = element.elementSubroutine(d_element);
         for (int i = 0; i < 8; i++)
         {
             const int i_global = element_global_DOF[i];
             _F_int_global(i_global) += element_F_int(i);
+
+            for (int j = 0; j < 8; j++)
+            {  
+                const int j_global = element_global_DOF[j];
+                _K_global(i_global, j_global) += element_K(i, j);
+            }
         }
     }
 }

@@ -20,6 +20,16 @@ class QuadElement
           _integration_weights({1.0, 1.0}),
           _global_DOF()
     {
+        // create 2x2 vector to store plastic states for integration points
+        PlasticState initial_plastic_state;
+        initial_plastic_state.dev_plastic_strain = Vector6d::Zero();
+        initial_plastic_state.beta = Vector6d::Zero();
+        initial_plastic_state.alpha = 0;
+        std::vector<PlasticState> init(_integration_points.size(), initial_plastic_state);
+        for (unsigned i = 0; i < _integration_points.size(); i++)
+            _last_plastic_states.push_back(init);
+
+        _cur_plastic_states = _last_plastic_states;
     }
 
     int numNodes() const { return 4; }
@@ -43,14 +53,8 @@ class QuadElement
 
     Eigen::Matrix2d UndeformedJacobian(double r, double s) const;
 
-    // evalutes the mass matrix M for the element
-    // Eigen::Matrix<double, 8, 8> M() const;
-
-    // evalutes the stiffness matrix K for the element for given nodal displacements
-    Eigen::Matrix<double, 8, 8> K(const Eigen::VectorXd& d_e) const;
-
-    // evaulates the internal force vector for the element for given nodal displacements
-    Eigen::Vector<double, 8> internalForce(const Eigen::VectorXd& d_e) const;
+    // calculates internal force vector and stiffness matrix given the nodal displacements
+    std::pair<Eigen::Vector<double, 8>, Eigen::Matrix<double, 8, 8>> elementSubroutine(const Eigen::VectorXd& d_e) const;
 
     // evalutes the deformation gradient at (r,s) for given nodal displacements
     Eigen::Matrix2d deformationGradient(double r, double s, const Eigen::VectorXd& d_e) const;
@@ -67,6 +71,19 @@ class QuadElement
         return _integration_weights;
     }
 
+    // set the "last" plastic state to the latest computed plastic state
+    // this is used once the NR loop has converged and we're moving on to the next load step
+    void updatePlasticState()
+    {
+        _last_plastic_states = _cur_plastic_states;
+    }
+
+    // returns the last plastic state at integration point (i,j)
+    PlasticState lastPlasticState(int i, int j) const
+    {
+        return _last_plastic_states[i][j];
+    }
+
     private:
     Eigen::Vector2d _x1;
     Eigen::Vector2d _x2;
@@ -77,6 +94,9 @@ class QuadElement
 
     std::vector<double> _integration_points;
     std::vector<double> _integration_weights;
+
+    mutable std::vector<std::vector<PlasticState>> _cur_plastic_states; // current plastic states at integration points
+    std::vector<std::vector<PlasticState>> _last_plastic_states; // previous plastic states at integration points
 
     std::vector<int> _global_DOF;
 };

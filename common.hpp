@@ -18,3 +18,10 @@ enum Axis
     Y = 1,
     Z = 2
 };
+
+struct PlasticState
+{
+    Vector6d dev_plastic_strain;    // deviatoric part of the plastic strain
+    double alpha; // isotropic hardening
+    Vector6d beta; // back stress
+};
