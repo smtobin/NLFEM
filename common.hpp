@@ -1,7 +1,7 @@
 #pragma once
 
 #define NSDIMS 2    // number of spatial dimensions
-#define NR_TOL 1e-25 // termination tolerance for Newton-Raphson
+#define NR_TOL 1e-20 // termination tolerance for Newton-Raphson
 #define NR_MAX_ITER 20 // max number of iterations for Newton-Raphson loop
 
 #include <Eigen/Dense>

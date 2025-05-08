@@ -18,9 +18,9 @@ e 0 1 2 3
 # displacement BC - node index, axis (x or y), displacement
 d 0 x 0
 d 0 y 0
-d 1 x 0.02
+d 1 x 0.05
 d 1 y 0
-d 2 x 0.02
+d 2 x 0.05
 d 3 x 0
 
 # force BC - node index, axis (x or y), force

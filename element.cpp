@@ -142,6 +142,7 @@ std::pair<Eigen::Vector<double, 8>, Eigen::Matrix<double, 8, 8>> QuadElement::el
             const double wj = _integration_weights[j];
 
             const Eigen::Matrix2d F_incremental = incrementalDeformationGradient(ri, sj, d_e_new, d_e_old);
+            // std::cout << "F_incremental:\n" << F_incremental << std::endl;
             Eigen::Matrix3d F_incremental_3x3 = Eigen::Matrix3d::Identity();
             F_incremental_3x3.block<2,2>(0,0) = F_incremental;
 
@@ -220,6 +221,8 @@ std::pair<Eigen::Vector<double, 8>, Eigen::Matrix<double, 8, 8>> QuadElement::el
                     K_sigma.block<2,2>(2*a, 2*b) += val * Eigen::Matrix2d::Identity();
                 }
             }
+
+            _cur_plastic_states[i][j] = new_state;
         }
     }
 

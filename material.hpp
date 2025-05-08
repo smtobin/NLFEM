@@ -193,10 +193,6 @@ class FinalMaterial : public Material
         else
         {
 
-        
-
-            // std::cout << "PLASTIC";
-
             // plastic deformation, project elastic state onto plastic yield surface
             // 3. Compute n_n+1 and delta_gamma
             Eigen::Matrix3d n_new = xi_new_trial / xi_new_trial.norm();
@@ -264,6 +260,9 @@ class FinalMaterial : public Material
 
         Matrix6d D = _getCijkl691(betr_n1, stress, D_ep);
         // new_state.dev_plastic_strain = strainMat2Voigt(e_p_new);
+
+        // std::cout << "New elastic strain:\n" << new_state.elastic_strain << std::endl;
+
         return std::make_tuple(stress, D, new_state);
     }
 
