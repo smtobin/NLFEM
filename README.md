@@ -16,27 +16,31 @@ make
 ```
 This will create an executable `NLFEM` in the `build/` directory, which takes the path to an input file as input.
 ```
-./NLFEM ../input/linear_fem.txt
+./NLFEM ../input/hw6.txt
 ```
+## HW6
+To run the radial return algorithm for Q1, run
+```
+./RadialReturn
+```
+from the build folder. The generated graphs are shown below:
+
+![image](https://github.com/user-attachments/assets/79617f7e-621a-4245-afc4-572ab809af8b)
+
+
+To run the full FEM solver for Q2, run
+```
+./NLFEM ../input/hw6.txt
+```
+from the build folder. The generated graphs are shown below:
+
+![image](https://github.com/user-attachments/assets/191ac4f0-1606-4107-b4ee-1f4de8478db7)
+
+
+The applied boundary conditions are a pin joint at the bottom left node, setting the x displacement on the upper left node, and prescribing 0.02 x displacement on the right two nodes. The number of load steps is hard-coded to be 100, and the time step is hard-coded to be 0.01.
+
 ## Midterm Assignment
-The Midterm assignment consists of multiple cases.
-
-Case 1 is a 1x1 quadrilateral element with pin joints on its two left nodes with prescribed x displacements on its two right nodes, letting the y DOF on the two right nodes be free.
-
-Case 2 is a 1x1 quadrilateral element with pin joints on its two bottom nodes with prescribed x displacements on its two top nodes, letting the y DOF on the two tops nodes be free. 
-
-Each case has their own input file, each with two versions for 10 load steps and 20 load steps:
-```
-./NLFEM ../input/midterm1_10steps.txt
-./NLFEM ../input/midterm1_20steps.txt
-./NLFEM ../input/midterm2_10steps.txt
-./NLFEM ../input/midterm2_20steps.txt
-```
-The code will print out the residual for each Newton-Raphson iteration at each load step, as well as the current nodal displacements after each load step. It will also produce plots using GNUPlot.
-
-### Plotting Results
-![plot1](plots/midterm_case1_plots.png)
-![plot2](plots/midterm_case2_plots.png)
+The repository for Midterm Assignment: https://github.com/smtobin/NLFEM/tree/28410df3ba68217287d24c6361fe2258d310452e
 
 ## Linear FEM Assignment
 The repository for Linear FEM: https://github.com/smtobin/NLFEM/tree/3b38613a801e5e5c18c425d65bef1809654b406a
