@@ -64,9 +64,6 @@ class Solver
     /** Solve the global finite element equations */
     void solve(int num_load_steps=1);
 
-    /** Evaluate element strains and stresses at integration points */
-    void evaluateElementAtIntegrationPoints(int element_index);
-
     /** Print out element nodal displacements. */
     void printElementNodalDisplacements(int element_index) const;
 
@@ -75,17 +72,16 @@ class Solver
     void _setupDOF();
 
     /** Newton-Raphson */
-    void _newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0);
+    void _newtonRaphson(const Eigen::VectorXd& F_ext, const Eigen::VectorXd& d0, const Eigen::VectorXd& d_old);
 
     /** Assembles the global stiffness matrix, updating the class variable _K */
-    void _assembleStiffnessMatrix(const Eigen::VectorXd& d);
+    // void _assembleStiffnessMatrix(const Eigen::VectorXd& d);
 
     /** Assembles the global internal force vector, updating the class variable _N */
-    void _assembleInternalForceVector(const Eigen::VectorXd& d);
+    // void _assembleInternalForceVector(const Eigen::VectorXd& d);
 
     /** Assembles both the global stiffness matrix and global internal force vector */
-    void _assembly(const Eigen::VectorXd& d);
-
+    void _assembly(const Eigen::VectorXd& d_new, const Eigen::VectorXd& d_old);
 
     private:
     /** Stores the nodes in the input mesh. */

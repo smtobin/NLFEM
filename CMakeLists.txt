@@ -26,6 +26,3 @@ message(CHECK_PASS "fetched")
 
 add_executable(NLFEM main.cpp element.cpp solver.cpp)
 target_link_libraries(NLFEM Eigen3::Eigen)
-
-add_executable(RadialReturn radial_return.cpp)
-target_link_libraries(RadialReturn Eigen3::Eigen)

@@ -4,7 +4,7 @@
 # Prescribed equal forces on right nodes (node 1 and node 2)
 
 # material
-m HW6
+m Final
 
 # nodes - index, x, y
 n 0 0 0

@@ -91,7 +91,24 @@ void readInputData(const std::string& filename,
             std::string material_str;
             if (!(iss >> c >> material_str)) { assert(0); }
 
-            material = std::make_unique<HW6Material>(12000, 0.3, 100, 1000.0/1003.0, 1003, 0.01);
+            material = std::make_unique<FinalMaterial>(12000, 0.3, 100, 1, 1003, 0.1); // set beta=1 for no kinematic hardening
+
+            // if (material_str == "PlaneStrain")
+            // {
+            //     // material = std::make_unique<PlaneStrainMaterial>(100, 0.25); // parameters from linear FEM assignment
+            // }
+            // else if (material_str == "HW3")
+            // {
+            //     // material = std::make_unique<HW3Material>(40, -50, -30); // parameters from HW3 assignment
+            // }
+            // else
+            // {
+            //     assert(0);
+            // }
+        }
+        else if (line[0] == 'l')
+        {
+            if (!(iss >> c >> num_load_steps)) { assert(0); }
         }
     }
 }
@@ -108,7 +125,7 @@ int main(int argc, char** argv)
     std::vector<DisplacementBC> displacement_BCs;
     std::vector<ForceBC> force_BCs;
     std::unique_ptr<Material> material;
-    int num_load_steps = 100;
+    int num_load_steps = 10;
 
     readInputData(input_filename, nodes, element_nodes, displacement_BCs, force_BCs, material, num_load_steps);
 
@@ -117,5 +134,6 @@ int main(int argc, char** argv)
 
     Solver solver(nodes, element_nodes, displacement_BCs, force_BCs, material.get());
     solver.solve(num_load_steps);
+    // solver.evaluateElementAtIntegrationPoints(0);
     solver.printElementNodalDisplacements(0);
 }
