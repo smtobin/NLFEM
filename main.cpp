@@ -91,7 +91,7 @@ void readInputData(const std::string& filename,
             std::string material_str;
             if (!(iss >> c >> material_str)) { assert(0); }
 
-            material = std::make_unique<FinalMaterial>(12000, 0.3, 100, 1, 1003, 0.1); // set beta=1 for no kinematic hardening
+            material = std::make_unique<FinalMaterial>(12000, 0.3, 100, 1, 1003); // set beta=1 for no kinematic hardening
 
             // if (material_str == "PlaneStrain")
             // {

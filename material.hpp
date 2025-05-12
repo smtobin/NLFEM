@@ -133,8 +133,8 @@ class Material
 class FinalMaterial : public Material
 {
     public:
-    explicit FinalMaterial(double E, double nu, double sigma_y, double beta, double H_bar_prime, double dt)
-    : _E(E), _nu(nu), _sigma_y(sigma_y), _beta(beta), _H_bar_prime(H_bar_prime), _dt(dt)
+    explicit FinalMaterial(double E, double nu, double sigma_y, double beta, double H_bar_prime)
+    : _E(E), _nu(nu), _sigma_y(sigma_y), _beta(beta), _H_bar_prime(H_bar_prime)
     {}
 
     virtual std::tuple<Vector6d, Matrix6d, PlasticState> materialSubroutine(const Vector6d& elastic_trial_strain, const Eigen::Matrix3d& betr_n1, const PlasticState& last_state) const override
@@ -207,7 +207,7 @@ class FinalMaterial : public Material
 
             // 5. Compute consistent elastoplastic tangent moduli
             double theta = 1 - (2*G*dgamma) / xi_new_trial.norm();
-            double theta_bar = 1 / (1 + (_isotropicHardeningModulusPrime(dgamma) + _kinematicHardeningModulusPrime(dgamma)) / (3*G) ) - (1 - theta);
+            double theta_bar = 1 / (1 + (_isotropicHardeningModulusPrime() + _kinematicHardeningModulusPrime()) / (3*G) ) - (1 - theta);
             
             D_ep(0,0) = K + 4.0/3.0*G*theta - 2*G*theta_bar*n_new(0,0)*n_new(0,0);
             D_ep(0,1) = K - 2.0/3.0*G*theta - 2*G*theta_bar*n_new(0,0)*n_new(1,1);
@@ -277,14 +277,14 @@ class FinalMaterial : public Material
         return (1-_beta) * _H_bar_prime * alpha;
     }
 
-    double _isotropicHardeningModulusPrime(double dgamma) const
+    double _isotropicHardeningModulusPrime() const
     {
-        return _beta * _H_bar_prime * dgamma / _dt * std::sqrt(2.0/3.0);
+        return _beta * _H_bar_prime;
     }
 
-    double _kinematicHardeningModulusPrime(double dgamma) const
+    double _kinematicHardeningModulusPrime() const
     {
-        return (1-_beta) * _H_bar_prime * dgamma / _dt * std::sqrt(2.0/3.0);
+        return (1-_beta) * _H_bar_prime;
     }
 
     Matrix6d _getL(const Eigen::Matrix3d& V, const Eigen::Vector3d& D, const Eigen::Vector3d& Dy, const Eigen::Vector3d& Ddy) const
@@ -458,5 +458,4 @@ class FinalMaterial : public Material
     double _sigma_y;
     double _beta;
     double _H_bar_prime;
-    double _dt;
 };
