@@ -30,6 +30,11 @@ class QuadElement
             _last_plastic_states.push_back(init);
 
         _cur_plastic_states = _last_plastic_states;
+
+        // create 2x2 vector to store stresses at integration points
+        std::vector<Eigen::Vector3d> init_stress(_integration_points.size(), Eigen::Vector3d::Zero());
+        for (unsigned i = 0; i < _integration_points.size(); i++)
+            _ip_stresses.push_back(init_stress);
     }
 
     int numNodes() const { return 4; }
@@ -95,6 +100,11 @@ class QuadElement
         return _last_plastic_states[i][j];
     }
 
+    Eigen::Vector3d stressAtIP(int i, int j) const
+    {
+        return _ip_stresses[i][j];
+    }
+
     private:
     Eigen::Matrix3d _matExp(const Eigen::Matrix3d& mat) const;
 
@@ -112,6 +122,8 @@ class QuadElement
 
     mutable std::vector<std::vector<PlasticState>> _cur_plastic_states; // current plastic states at integration points
     std::vector<std::vector<PlasticState>> _last_plastic_states; // previous plastic states at integration points
+
+    mutable std::vector<std::vector<Eigen::Vector3d>> _ip_stresses;
 
     std::vector<int> _global_DOF;
 };

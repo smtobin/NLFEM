@@ -162,6 +162,8 @@ std::pair<Eigen::Vector<double, 8>, Eigen::Matrix<double, 8, 8>> QuadElement::el
             const Eigen::Vector3d tau_vec( tau_vec_6d[0], tau_vec_6d[1], tau_vec_6d[5]);
             const Eigen::Vector3d sigma_vec = 1.0 / F_mat.determinant() * tau_vec;
 
+            _ip_stresses[i][j] = sigma_vec;
+
              /** Contribution to element stiffness matrix */
             // map 6x6 tangent moduli to 3x3 tangent moduli for 2D
             Eigen::Matrix3d D_mat;

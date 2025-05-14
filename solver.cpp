@@ -80,15 +80,8 @@ void Solver::solve(int num_load_steps)
     Eigen::VectorXd last_d_global = _d_global;
     _F_ext_global = Eigen::VectorXd::Zero(numDOF());
 
-    // midterm-specific plotting
-    // store sigma and Green strain at integration point 3 for each time step
-    // store displacement at node 3 for each time step
-    std::vector<double> ux_node3(num_load_steps+1), uy_node3(num_load_steps+1),
-         sigma11_ip3(num_load_steps+1), sigma22_ip3(num_load_steps+1), sigma12_ip3(num_load_steps+1),
-         E11_ip3(num_load_steps+1), E22_ip3(num_load_steps+1), E12_ip3(num_load_steps+1);
-    ux_node3[0] = 0; uy_node3[0] = 0;
-    sigma11_ip3[0] = 0; sigma22_ip3[0] = 0; sigma12_ip3[0] = 0;
-    E11_ip3[0] = 0; E22_ip3[0] = 0; E12_ip3[0] = 0;
+    // plotting
+    std::vector<double> sigma_11, sigma_22, sigma_12, alpha, times;
 
     for (int k = 0; k < num_load_steps; k++)
     {
@@ -122,7 +115,36 @@ void Solver::solve(int num_load_steps)
         printElementNodalDisplacements(0);
 
         last_d_global = _d_global;
+
+        // plotting
+        const QuadElement& element = _elements[0];
+        
+        Eigen::Vector3d stress_vec3 = element.stressAtIP(1,1);
+        PlasticState new_plastic_state = element.lastPlasticState(1,1);
+        sigma_11.push_back(stress_vec3[0]); sigma_22.push_back(stress_vec3[1]); sigma_12.push_back(stress_vec3[2]);
+        alpha.push_back(new_plastic_state.alpha);
+        times.push_back(k*0.1);
     }
+
+    // plot using GNU plot
+    Gnuplot plt{};
+
+    plt.sendcommand("set terminal x11 size 1000,500"); 
+    plt.multiplot(1, 2, "Plots for Final Project - Uniaxial Tension");
+    // plot 1 - sigma vs time
+    plt.set_title("sigma vs. time");
+    plt.set_xlabel("Time");
+    plt.set_ylabel("sigma");
+    plt.plot(times, sigma_11, "sigma_{11}");
+    plt.plot(times, sigma_22, "sigma_{22}");
+    plt.plot(times, sigma_12, "sigma_{12}");
+    plt.show();
+    // plot 2 - alpha vs time
+    plt.set_title("alpha vs time");
+    plt.set_xlabel("time");
+    plt.set_ylabel("alpha");
+    plt.plot(times, alpha, "alpha");
+    plt.show();
 }
 
 void Solver::printElementNodalDisplacements(int element_index) const
