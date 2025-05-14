@@ -18,26 +18,53 @@ This will create an executable `NLFEM` in the `build/` directory, which takes th
 ```
 ./NLFEM ../input/hw6.txt
 ```
+## Final Project
+Working implementation of finite strain plasticity with isotropic hardening in 2D. 
+
+Parameters: 1x1 2D square element, E=12000, nu=0.3, yield stress=100, H_bar_prime=1000, 10 load steps.
+
+Two cases were tested:
+
+### Case 1 - Uniaxial Stress
+To run (from build directory):
+
+```
+./NLFEM ../input/final_case1.txt
+```
+
+Left nodes have x-displacement fixed, prescribed x-displacement on right nodes of 0.04. Bottom nodes have y-displacement fixed, y-displacement of top nodes free.
+
+![image](https://github.com/user-attachments/assets/688e11c4-63c1-43e2-b2f7-aa111c4192d6)
+
+Stresses and alpha for integration point 3:
+
+![Screenshot from 2025-05-14 10-38-07](https://github.com/user-attachments/assets/8dc0c1a4-33e6-4241-868f-8b3c80dd8d7c)
+
+### Case 2 - Right-side loading
+To run (from build directory):
+
+```
+./NLFEM ../input/final_case2.txt
+```
+
+Left nodes are completely fixed, prescribed x-displacement on right nodes of 0.04. Y-displacement of right nodes free.
+![image](https://github.com/user-attachments/assets/5c5fbc8f-f5fe-4ffe-9a99-8349c2ac9003)
+
+Stresses and alpha for integration point 3:
+
+![image](https://github.com/user-attachments/assets/43686d89-a3dc-4894-a78b-3fb37a256ab5)
+
+### Why I think my results are correct
+
+In the first case, the results agree with those posted on Canvas, and my code achieves these results with quadratic convergence.
+
+In the second case, the results agree with my intuition (y-displacements are symmetric, the top-right node moves down and the bottom-right node moves up).
+
+In both cases, I converge to the same results regardless of the number of load steps used.
+
+
 ## HW6
-To run the radial return algorithm for Q1, run
-```
-./RadialReturn
-```
-from the build folder. The generated graphs are shown below:
-
-![image](https://github.com/user-attachments/assets/79617f7e-621a-4245-afc4-572ab809af8b)
-
-
-To run the full FEM solver for Q2, run
-```
-./NLFEM ../input/hw6.txt
-```
-from the build folder. The generated graphs are shown below:
-
-![image](https://github.com/user-attachments/assets/191ac4f0-1606-4107-b4ee-1f4de8478db7)
-
-
-The applied boundary conditions are a pin joint at the bottom left node, setting the x displacement on the upper left node, and prescribing 0.02 x displacement on the right two nodes. The number of load steps is hard-coded to be 100, and the time step is hard-coded to be 0.01.
+The repository for HW6: https://github.com/smtobin/NLFEM/tree/5f17ae68db1e84209f567faeb99ace00bae1dd4b
 
 ## Midterm Assignment
 The repository for Midterm Assignment: https://github.com/smtobin/NLFEM/tree/28410df3ba68217287d24c6361fe2258d310452e
